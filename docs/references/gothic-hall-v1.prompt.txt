@@ -1,0 +1,16 @@
+Generated using the built-in image_gen tool.
+Concept reference for minecraft-builder-mcp; not an in-game screenshot or a dimensioned construction plan.
+
+Use case: stylized-concept.
+Asset type: architectural reference for a substantial building we will later construct in Minecraft Java.
+Primary request: one impressive but realistically buildable Gothic civic guildhall / town hall, significantly larger and more sophisticated than a small watchtower.
+
+Subject: a coherent single building with a long three-storey great hall, a steep dark gabled roof, a prominent square bell tower with a tall pointed roof, a lower connected side wing and an entrance stair. Approximately 65 by 45 Minecraft blocks in footprint, highest tower around 55 blocks; communicate substantial scale through believable block sizes. Strong readable silhouette and balanced architectural hierarchy. The front has a deep pointed-arch entrance and a restrained series of tall, narrow RECESSED windows with stone jambs and lintels. Glass sits inside thick masonry: absolutely no protruding glass boxes. A few recessed paired lancet windows on the great hall. Buttresses, structural masonry, layered cornices and roofs made of explicit block steps; purposeful details with some calm wall areas. The attached wing and tower must visibly connect to usable interior volumes.
+
+Style/medium: beautiful high-quality Minecraft voxel architectural concept render, faithful cubic full-block, stair and slab construction at consistent voxel scale, crisp recognisable vanilla-like pixel textures. All edges obey the Minecraft grid. Not a smooth realistic European building with a token pixel filter.
+Materials: predominantly grey stone bricks with restrained polished andesite and light stone trim, dark deepslate stair/slab roofs, dark oak and spruce for doors and inset timber features, dark glass deep in the walls. Restrained palette; strong depth and masonry shadows, no random patchwork.
+Scene: the complete building stands on a small paved terrace at ground level, with minimal grass terrain and a quiet pale sky. Sparse setting keeps the architecture fully readable.
+Composition: a single landscape image, elevated front three-quarter architectural view showing the entrance, long side facade, roof structure and tower; the full building and entire highest roof are inside the frame with breathing room. Moderate perspective, no fisheye. Building fills most of the composition.
+Lighting: clear soft daylight with warm sunlight, readable shadow detail; avoid night, fog or overexposure.
+Avoid: people, mobs, UI, HUD, captions, labels, text, watermarks, logos, floating islands, mountains obscuring the building, sprawling cities, enormous fantasy spires, excessive clutter or unbuildable smooth curves.
+Generate a brand-new standalone reference, not an edit or screenshot of an existing build.

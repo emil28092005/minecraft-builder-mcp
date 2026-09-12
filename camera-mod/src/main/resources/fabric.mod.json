@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft_builder_camera",
+  "version": "${version}",
+  "name": "Minecraft Builder Camera",
+  "description": "Authenticated loopback camera worker for minecraft-builder-mcp.",
+  "environment": "client",
+  "entrypoints": { "client": ["dev.minecraftbuilder.camera.CameraClient"] },
+  "mixins": ["minecraft-builder-camera.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": "0.160.0+26.2"
+  }
+}

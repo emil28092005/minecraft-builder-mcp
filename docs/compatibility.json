@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "projectVersion": "0.1.0-SNAPSHOT",
+  "status": "prototype; graphical camera and MCP ImageContent verified; authenticated ACP model turn pending",
+  "testedPlatform": "Linux x86_64",
+  "minecraft": "26.2",
+  "paper": {
+    "build": 123,
+    "api": "26.2.build.123-stable",
+    "serverSha256": "7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08"
+  },
+  "java": "25.0.2",
+  "maven": "3.9.11",
+  "nodeTested": "22.22.3",
+  "fabric": {
+    "loader": "0.19.5",
+    "api": "0.160.0+26.2",
+    "loom": "1.17.20",
+    "gradle": "9.5.1"
+  },
+  "bridge": {
+    "codexAcp": "1.11.0",
+    "codex": "0.153.4",
+    "acpSdk": "1.4.0",
+    "mcpSdk": "1.30.0",
+    "typescript": "7.0.2",
+    "zod": "4.6.2"
+  },
+  "schematic": {
+    "format": "Sponge v2",
+    "worldEditRuntimeRequired": false,
+    "maxBlocks": 4096,
+    "entities": false,
+    "blockEntities": false
+  },
+  "dependencySources": [
+    "../pom.xml",
+    "../bridge/package-lock.json",
+    "../camera-mod/gradle.properties",
+    "../camera-mod/gradle/wrapper/gradle-wrapper.properties",
+    "../scripts/bootstrap-tools.py",
+    "../scripts/dev-server.py"
+  ]
+}

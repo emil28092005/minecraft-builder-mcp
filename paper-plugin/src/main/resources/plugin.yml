@@ -1,0 +1,14 @@
+name: MinecraftBuilderMCP
+version: '0.1.0'
+main: io.github.minecraftbuilder.paper.BuilderPlugin
+api-version: '26.2'
+description: Scoped world editing and camera bridge for AI-assisted building
+commands:
+  ai:
+    description: Minecraft Builder agent and editor controls
+    usage: /ai setup | area | status | stop | camera | <message>
+    permission: minecraftbuilder.use
+permissions:
+  minecraftbuilder.use:
+    description: Access the configured builder project
+    default: op

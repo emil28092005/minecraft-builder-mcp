@@ -1,0 +1,33 @@
+{
+  "name": "minecraft-builder-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local MCP tools and ACP chat bridge for minecraft-builder-mcp",
+  "engines": {
+    "node": ">=22.22.3"
+  },
+  "bin": {
+    "minecraft-builder-mcp": "dist/mcp.js",
+    "minecraft-builder-chat": "dist/chat.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "mcp": "node dist/mcp.js",
+    "chat": "node dist/chat.js",
+    "doctor": "node dist/doctor.js",
+    "login": "node dist/login.js"
+  },
+  "dependencies": {
+    "@agentclientprotocol/codex-acp": "1.11.0",
+    "@agentclientprotocol/sdk": "1.4.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.2",
+    "typescript": "7.0.2"
+  }
+}

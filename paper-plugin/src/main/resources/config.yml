@@ -1,0 +1,19 @@
+http-port: 8765
+# Empty values are generated on first enable, never printed to chat or logs.
+admin-token: ''
+agent-token: ''
+project-id: default
+owner-uuid: ''
+world: world
+world-epoch: ''
+region:
+  min: {x: -64, y: 0, z: -64}
+  max: {x: 64, y: 128, z: 64}
+# Enable only in an isolated local development world for the smoke test.
+allow-local-automation: false
+max-plan-blocks: 4096
+slice-blocks: 128
+slice-millis: 5
+camera-player-uuid: ''
+camera-port: 8766
+camera-token: ''
