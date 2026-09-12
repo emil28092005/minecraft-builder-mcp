@@ -1,24 +1,24 @@
-# Готический зал
+# Gothic Hall
 
-Воспроизводимая постройка по [визуальному референсу](../references/gothic-hall-v1.png): большой зал с галереями, меньший двухэтажный корпус, соединительный переход и колокольня. Геометрию создают модули в `scripts/builds/gothic_hall/`, применение выполняет `scripts/build-gothic-hall.py` через проверяемые операции Paper-плагина.
+A reproducible build based on the [visual reference](../references/gothic-hall-v1.png): a large hall with galleries, a smaller two-story wing, a connecting passage, and a bell tower. Modules in `scripts/builds/gothic_hall/` generate the geometry; `scripts/build-gothic-hall.py` applies it through the Paper plugin's checked operations.
 
-Это адаптация референса доступной палитрой: каменный кирпич, андезит, диорит, тёмный сланец, древесина и затемнённое стекло. Шейдеры не используются. Детальная меблировка и ландшафт пока не выполнены; имеются терраса, лестницы, простые скамьи и помост. Колокол собран из блоков, без сущности колокола.
+This report records the original baseline before subsequent decorative polishing. It adapts the reference to the available palette: stone bricks, andesite, diorite, dark deepslate, wood, and tinted glass. No shaders were used. Detailed furnishing and landscaping were not part of this baseline; it includes a terrace, stairs, simple benches, and a raised platform. The bell is built from blocks, without a bell entity.
 
-Постройка применена в живом мире: **29 354 блока, 87 пакетов**, итоговая проверка сохранена в `.runtime/gothic-hall/verification.json`.
+The baseline was applied in the live world: **29,354 blocks in 87 batches**, with verification saved in `.runtime/gothic-hall/verification.json`.
 
-![Постройка в Minecraft без шейдеров](gothic-hall-built.png)
+![Original Minecraft build without shaders](gothic-hall-built.png)
 
-Настоящий снимок Fabric-камеры от 12 сентября 2026 года, после финальной отделки. PNG сохранён без обработки; [метаданные снимка](gothic-hall-built.capture.json). Ракурс: `(0, -20, -63)`, yaw `25°`, pitch `16°`, FOV `85°`. Дальность тестового сервера — пять чанков, поэтому дальние края скрываются в тумане. Готовность кадра проверяется по клиенту; совпадение блоков с чертежом проверено отдельно чтением мира.
+A real Fabric camera capture from September 12, 2026, after the initial finishing pass. The PNG is unprocessed; [capture metadata](gothic-hall-built.capture.json). Viewpoint: `(0, -20, -63)`, yaw `25°`, pitch `16°`, FOV `85°`. The test server's view distance was five chunks for this original capture, so distant edges disappear into fog. The current local server has since been updated to 12 chunks for the polishing pass. Frame readiness is checked on the client; agreement between the blocks and the blueprint was verified separately by reading the world.
 
-Начало локальных координат — **origin = (-50, -60, -40)**. Мировая координата получается прибавлением origin к локальной. Все диапазоны ниже включают обе границы; главные фасады обращены на север, в сторону `−Z`.
+The local coordinate origin is **origin = (-50, -60, -40)**. Add this origin to a local coordinate to obtain its world coordinate. All ranges below are inclusive; the main facades face north, toward `−Z`.
 
-- Терраса: локально `X=1..63, Z=1..62, Y=0`, размер **63 × 62**. В мире: `X=-49..13, Z=-39..22, Y=-60`.
-- Большой зал: основной корпус `X=7..31, Z=13..56`, размер **25 × 44**; с декором занимает `X=3..35, Z=8..57, Y=0..48`. Основной пол на `Y=6`, галереи на `Y=16`, конёк на `Y=43`. Главный вход около мировой точки **(-31, -53, -31)**.
-- Боковой корпус: основное пятно `X=38..57, Z=16..41`, размер **20 × 26**; с выступами `X=36..59, Z=13..43, Y=0..28`. Полы на `Y=0/8`, конёк на `Y=28`. Вход около **(-3, -59, -26)**.
-- Колокольня: с выступами `X=34..46, Z=42..56, Y=0..60`, размер **13 × 15**, 61 уровень блоков. Вершина в мире на `Y=0`; вход около **(-10, -58, 2)**.
-- Соединительный переход: `X=31..40, Z=33..43, Y=0..16`; проход в полосе `Z=36..39` поднимается с пола большого зала `Y=6` к полу бокового корпуса `Y=8`.
+- Terrace: local `X=1..63, Z=1..62, Y=0`, size **63 × 62**. World coordinates: `X=-49..13, Z=-39..22, Y=-60`.
+- Large hall: main body `X=7..31, Z=13..56`, size **25 × 44**; with decoration it occupies `X=3..35, Z=8..57, Y=0..48`. Main floor at `Y=6`, galleries at `Y=16`, roof ridge at `Y=43`. Main entrance near world position **(-31, -53, -31)**.
+- Side wing: main footprint `X=38..57, Z=16..41`, size **20 × 26**; including projections, `X=36..59, Z=13..43, Y=0..28`. Floors at `Y=0/8`, roof ridge at `Y=28`. Entrance near **(-3, -59, -26)**.
+- Bell tower: including projections, `X=34..46, Z=42..56, Y=0..60`, size **13 × 15**, with 61 block levels. Its top is at world `Y=0`; entrance near **(-10, -58, 2)**.
+- Connecting passage: `X=31..40, Z=33..43, Y=0..16`; the walkway in `Z=36..39` rises from the hall floor at `Y=6` to the wing floor at `Y=8`.
 
-Команды выполняются из корня репозитория при запущенном Paper-сервере, подключённом владельце проекта и загруженных чанках стройплощадки. Скрипт читает область проекта и отдельный агентский токен из приватного `.runtime/server/plugins/MinecraftBuilderMCP/config.yml`.
+Run commands from the repository root with Paper running, the project owner connected, and the building site's chunks loaded. The script reads project scope and the separate agent token from the private `.runtime/server/plugins/MinecraftBuilderMCP/config.yml`.
 
 ```bash
 python3 scripts/build-gothic-hall.py plan
@@ -26,13 +26,13 @@ python3 scripts/build-gothic-hall.py apply
 python3 scripts/build-gothic-hall.py verify
 ```
 
-`plan` сохраняет `.runtime/gothic-hall/manifest.json`, проверяет палитру, границы проекта и точность сжатия геометрии в рецепты. Мир эта команда не меняет. `apply` перед каждым новым пакетом проверяет, что его область пуста, затем выполняет `build_prepare` и `build_apply`. Состояния блоков в сохранённом плане также должны ожидать воздух. `verify` сравнивает записанные блоки с результатом в мире и сохраняет отчёт; пустые пространства вне записанной маски она не проверяет.
+`plan` saves `.runtime/gothic-hall/manifest.json` and checks the palette, project bounds, and exactness of geometry compression into recipes. It does not change the world. Before each new batch, `apply` checks that the target region is empty, then calls `build_prepare` and `build_apply`. Original block states in the saved plan must also be air. `verify` compares recorded blocks with the live world and saves a report; it does not check empty spaces outside the recorded mask.
 
-Журнал возобновления — `.runtime/gothic-hall/ledger.json`. В нём сохраняются хеш чертежа, планы, ключи идемпотентности, идентификаторы операций и их статусы. Повторный `apply` продолжает по этому журналу, используя существующие операции; завершённые пакеты заново не строятся. Также проверяются идентификатор мира и его эпоха.
+The resume ledger is `.runtime/gothic-hall/ledger.json`. It stores the blueprint hash, plans, idempotency keys, operation IDs, and their statuses. Rerunning `apply` resumes from this ledger using existing operations; completed batches are not rebuilt. The world ID and epoch are also checked.
 
-Занятая область, ручное изменение ожидаемого блока, незавершённая или конфликтующая операция останавливают применение. `verify` сообщает расхождения, сохраняя ручные правки. При остановке нужно проверить указанную операцию и её серверный журнал; удалять ledger или автоматически создавать новый план поверх существующей постройки нельзя. Серверные планы находятся в `plugins/MinecraftBuilderMCP/journal/plans/` и нужны этому скрипту для применения и проверки.
+An occupied region, a manual change to an expected block, or an unfinished/conflicting operation stops application. `verify` reports mismatches while preserving manual edits. If application stops, inspect the reported operation and its server journal; do not delete the ledger or automatically create a new plan over the existing structure. Server plans live in `plugins/MinecraftBuilderMCP/journal/plans/` and are required by this script for application and verification.
 
-Финальная отделка хранится отдельно от исходного чертежа: `scripts/finish-gothic-hall.py` заменяет 14 центральных плит наверший на целые каменные блоки и четыре блока перехода на ступени. Это убирает зазоры в шпилях и делает подъём между корпусами плавным. Используются отдельный план и `.runtime/gothic-hall/finish-ledger.json`.
+The initial finishing pass is stored separately from the original blueprint: `scripts/finish-gothic-hall.py` replaces 14 central pinnacle slabs with full stone blocks and four passage blocks with stairs. This removes gaps in the spires and makes the ascent between the buildings smooth. It uses a separate plan and `.runtime/gothic-hall/finish-ledger.json`.
 
 ```bash
 python3 scripts/finish-gothic-hall.py plan
@@ -40,6 +40,6 @@ python3 scripts/finish-gothic-hall.py apply
 python3 scripts/finish-gothic-hall.py verify
 ```
 
-После отделки следует использовать последнюю команду: она проверяет исходную постройку с учётом 18 замен. Исходная `build-gothic-hall.py verify` ожидает прежние состояния этих блоков и сообщит о расхождениях.
+After that finishing pass, use the last command: it verifies the original building with the 18 replacements applied. The original `build-gothic-hall.py verify` expects those blocks' previous states and will report mismatches.
 
-Отделка применена операцией `682bb5bb-a1fe-4359-b687-06f7b1ce1005`. Повторная проверка всех 29 354 блоков прошла; отчёт — `.runtime/gothic-hall/finish-verification.json`. Мир сохранён через `save-all flush`.
+The finishing pass was applied as operation `682bb5bb-a1fe-4359-b687-06f7b1ce1005`. Reverification of all 29,354 blocks passed; the report is `.runtime/gothic-hall/finish-verification.json`. The world was saved with `save-all flush`.

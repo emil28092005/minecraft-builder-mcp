@@ -1,48 +1,48 @@
-# Проверка с одним клиентом Prism
+# Single-client Prism test
 
-Проверка выполнена в существующем профиле **26.2 MCP Building**: Minecraft 26.2, Fabric Loader 0.19.5, Fabric API 0.160.0+26.2 и Java 25.0.1 из Prism. Установлен собранный `minecraft-builder-camera-0.1.0-SNAPSHOT.jar`.
+The test used the existing **26.2 MCP Building** profile: Minecraft 26.2, Fabric Loader 0.19.5, Fabric API 0.160.0+26.2, and Java 25.0.1 supplied by Prism. The built `minecraft-builder-camera-0.1.0-SNAPSHOT.jar` was installed.
 
-Пользователь выбрал автономный профиль для локального теста. В этой рабочей установке `.runtime/server/server.properties` содержит `online-mode=false`, `server-ip=127.0.0.1`, `server-port=25575`; слушающий адрес не расширялся. Это изменение тестовой конфигурации, обычная первоначальная подготовка `dev-server.py` по-прежнему включает проверку аккаунта.
+The user selected an offline profile for this local test. In this working installation, `.runtime/server/server.properties` contains `online-mode=false`, `server-ip=127.0.0.1`, and `server-port=25575`; the listening address was not broadened. This is a test configuration change; the normal initial setup through `dev-server.py` still enables account authentication.
 
-В приватном конфиге плагина `owner-uuid` и `camera-player-uuid` совпадают. Игроку выданы права оператора на этом тестовом сервере; `allow-local-automation` остаётся выключенным, все вызовы выполнялись с областью владельца. Для фотографий режим временно менялся на spectator. После проверки игрок возвращён в creative на платформе перед башней; автоматического переключения внутри плагина пока нет.
+In the plugin's private configuration, `owner-uuid` and `camera-player-uuid` match. The player was granted operator permissions on this test server; `allow-local-automation` remains disabled, and all calls used owner scope. The game mode was temporarily changed to spectator for photographs. After the test, the player was returned to creative on the platform in front of the tower; the plugin does not yet switch modes automatically.
 
-## Что проверено
+## What was verified
 
-1. Prism загрузил Fabric-мод и подключил одного игрока к Paper. HTTP Worker сообщил подключение и правильный UUID.
-2. Через агентский маршрут Paper подготовлена и применена постройка из 575 блоков на ранее пустом участке. Создана именованная часть `One-client camera test tower` с точной маской записи.
-3. Первый снимок остановился с `view_changed`, без возврата старого кадра. При повторе неподвижный клиент дал настоящий PNG 1280×720. Метаданные подтверждают заданные yaw/pitch, 20 стабильных тиков и три кадра; запрос занял 2.052 секунды после задержки оператора.
-4. Успешно снят второй ракурс и дневной вариант первого.
-5. Отдельный MCP stdio-клиент запросил новый снимок и получил один `ImageContent` с PNG. Текстовый блок содержал только метаданные, без base64. Проверены идентификатор, время снимка, сигнатура и размеры PNG. Изображение просмотрено: на нём тестовая башня, кадр без HUD.
+1. Prism loaded the Fabric mod and connected one player to Paper. The HTTP worker reported a connection and the correct UUID.
+2. A 575-block structure was prepared and applied through Paper's agent route in a previously empty area. A named part, `One-client camera test tower`, was created with the exact write mask.
+3. The first capture stopped with `view_changed`, without returning a stale frame. On retry, the stationary client produced a real 1280×720 PNG. Metadata confirms the requested yaw/pitch, 20 stable ticks, and three frames; the request took 2.052 seconds after the operator delay.
+4. A second viewpoint and a daylight version of the first were captured successfully.
+5. A separate MCP stdio client requested a new capture and received one `ImageContent` containing a PNG. The text block contained only metadata, without base64. The capture ID, timestamp, PNG signature, and dimensions were checked. The image was viewed: it shows the test tower without the HUD.
 
-Все изображения — исходные данные Minecraft framebuffer. Они не генерировались нейросетью и не ретушировались. `serverRevisionVerified: false` остаётся честным ограничением: клиентская готовность пока эвристическая. Первый ход модели через `codex-acp` этим тестом не проверялся.
+All images are original Minecraft framebuffer data. They were neither AI-generated nor retouched. `serverRevisionVerified: false` remains an explicit limitation: client readiness is still heuristic. This test did not verify the first model turn through `codex-acp`.
 
-Локальные результаты:
+Local results:
 
-- `.runtime/camera-test/build.json` — идентификатор плана/операции, число блоков, часть и область.
-- `.runtime/camera-test/20260912T192813Z-2b100930.png` и соседний JSON — первый успешный ракурс.
-- `.runtime/camera-test/20260912T192831Z-776d8f9e.png` — второй ракурс.
-- `.runtime/camera-test/20260912T192909Z-76b04afd.png` — дневной кадр.
-- `.runtime/camera-test/mcp-975cd742-d23f-4b8d-bcc8-dc6e151a8f5c.png` и соседний JSON — изображение, полученное через MCP.
+- `.runtime/camera-test/build.json` — plan/operation ID, block count, part, and region.
+- `.runtime/camera-test/20260912T192813Z-2b100930.png` and the adjacent JSON — first successful viewpoint.
+- `.runtime/camera-test/20260912T192831Z-776d8f9e.png` — second viewpoint.
+- `.runtime/camera-test/20260912T192909Z-76b04afd.png` — daylight image.
+- `.runtime/camera-test/mcp-975cd742-d23f-4b8d-bcc8-dc6e151a8f5c.png` and the adjacent JSON — image received through MCP.
 
-Башня оставлена для осмотра около `12, 95, 12`, на платформе `x/z=4..20`, `y=94`. Она пересекает область автоматических серверных тестов. Перед их повторным запуском нужен отдельный чистый тестовый мир или проверяемая отмена этой операции; тесты сами не удаляют занятую область.
+The tower was left for inspection near `12, 95, 12`, on a platform at `x/z=4..20`, `y=94`. It overlaps the automated server tests' region. Before rerunning those tests, use a separate clean test world or a checked undo of this operation; the tests do not clear an occupied region themselves.
 
-## Повторение снимка
+## Repeating a capture
 
-В Prism у профиля настроен wrapper `python3 /путь/к/minecraft-builder-mcp/scripts/camera-wrapper.py`. Он читает приватный ключ камеры из Paper config и передаёт только процессу Java через окружение. Секрет не помещается в `instance.cfg` или командную строку. Исходный `instance.cfg` и `options.txt` сохранены в `.runtime/prism-one-client-backup`.
+The Prism profile uses the wrapper `python3 /path/to/minecraft-builder-mcp/scripts/camera-wrapper.py`. It reads the private camera token from Paper's configuration and passes it only to the Java process through its environment. The secret is not placed in `instance.cfg` or the command line. The original `instance.cfg` and `options.txt` are backed up in `.runtime/prism-one-client-backup`.
 
-После подключения, из игры:
+After connecting, run in the game:
 
 ```text
 /gamemode spectator
 /ai camera save test
 ```
 
-Сохранять ракурс нужно внутри выбранной области. Из корня проекта:
+Save the viewpoint inside the selected region. From the project root:
 
 ```bash
 python3 scripts/live-camera-test.py --delay 8
 ```
 
-Вернуться в окно Minecraft, закрыть меню/чат и не двигаться до завершения. Скрипт сохраняет новый PNG и очищенные метаданные. Затем можно вручную выполнить `/gamemode creative`.
+Return to Minecraft, close menus/chat, and remain still until completion. The script saves a new PNG and sanitized metadata. You can then run `/gamemode creative` manually.
 
-`bridge/test/live-camera.mjs` отдельно проверяет MCP ImageContent. Он требует доверенные переменные `MCB_AGENT_TOKEN`, `MCB_PLAYER_ID`, `MCB_PROJECT_ID`, JSON-позу `MCB_CAPTURE_POSE` и необязательный `MCB_AFTER_OPERATION_ID`. Снимок перемещает настроенного наблюдателя; это явный интеграционный тест, он не входит в обычный `npm test`.
+`bridge/test/live-camera.mjs` separately verifies MCP ImageContent. It requires the trusted variables `MCB_AGENT_TOKEN`, `MCB_PLAYER_ID`, `MCB_PROJECT_ID`, a JSON pose in `MCB_CAPTURE_POSE`, and optionally `MCB_AFTER_OPERATION_ID`. Capture moves the configured observer; this is an explicit integration test and is not included in ordinary `npm test`.

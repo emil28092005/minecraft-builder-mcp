@@ -1,57 +1,57 @@
-# Состояние реализации
+# Implementation status
 
-Первый прототип собран и проверен на настоящем локальном Paper 26.2, включая графический клиент камеры в Prism и передачу изображения через MCP. Он ещё не закрывает всю v0.1 из [дизайна](DESIGN.md): первый авторизованный ход Codex через ACP остаётся непроверенным.
+The first prototype has been built and tested on a real local Paper 26.2 server, including the graphical camera client in Prism and image delivery through MCP. It does not yet cover all of v0.1 in the [design](DESIGN.md): the first authenticated Codex turn over ACP remains untested.
 
-## Реализованные компоненты
+## Implemented components
 
-`world-core` содержит независимый от Bukkit редактор. Декларативный рецепт превращается в неизменяемый план с исходными и желаемыми состояниями, явными зависимостями чтения и сроком действия. Перед записью выполняется проверка; непосредственно при записи состояния сверяются повторно. Дисковые намерения сохраняются до изменения мира, результаты — после порции. Файловый ввод-вывод вынесен с серверного потока. Отмена останавливает следующие порции; уже записанное остаётся в истории.
+`world-core` contains a Bukkit-independent editor. A declarative recipe becomes an immutable plan with original and desired states, explicit read dependencies, and an expiry time. Validation happens before writing; states are checked again at the point of each write. Disk intents are persisted before the world changes, and results after each slice. File I/O runs off the server thread. Cancellation stops subsequent slices; completed writes remain in history.
 
-`paper-plugin` привязывает это ядро к серверному потоку, проверяет владельца, мир, эпоху, область и защищённые части. HTTP доступен только на loopback, с отдельными ключами администратора и агента. Плагин регистрирует `/ai`, хранит небольшую очередь чата, пересылает ответы только инициатору и управляет телепортацией наблюдателя. Журнал и метаданные находятся в каталоге плагина, игровые блоки остаются ванильными.
+`paper-plugin` binds the core to the server thread and checks the owner, world, epoch, region, and protected parts. HTTP is available only on loopback, with separate administrator and agent keys. The plugin registers `/ai`, maintains a small chat queue, sends replies only to the initiator, and controls observer teleportation. The journal and metadata live in the plugin directory; game blocks remain vanilla.
 
-`bridge` предоставляет 14 инструментов MCP по stdio, принимает события чата Paper и запускает закреплённый `codex-acp`. Диалоги разделены по игроку и проекту, очередь сериализована, остановка распространяется на ACP. Идентификатор сессии и компактная сводка сохраняются. Агент получает отдельный MCP-токен; ключ администратора остаётся у Bridge. Большие ответы ограничены, изображения передаются как MCP image content.
+`bridge` exposes 14 MCP tools over stdio, accepts Paper chat events, and launches the pinned `codex-acp`. Conversations are separated by player and project, queues are serialized, and stopping propagates to ACP. The session ID and a compact summary are persisted. The agent receives a separate MCP token; the administrator key stays with the Bridge. Large responses are bounded, and images are delivered as MCP image content.
 
-`camera-mod` содержит локальный HTTP Worker и захват framebuffer Minecraft 26.2. Камера ждёт spectator, нужную позицию и измерение, доступность соседних чанков и стабилизацию кадров. Настройки HUD/FOV восстанавливаются после снимка или ошибки. На настоящем клиенте Prism проверены Mixin, серверная телепортация и валидные PNG с нескольких ракурсов. Владелец и наблюдатель использовали один UUID.
+`camera-mod` contains a local HTTP Worker and Minecraft 26.2 framebuffer capture. The camera waits for spectator mode, the requested position and dimension, neighboring chunk availability, and frame stabilization. HUD/FOV settings are restored after capture or failure. Mixin integration, server-side teleportation, and valid PNGs from several viewpoints have been tested in a real Prism client. The owner and observer used the same UUID.
 
-## Подтверждённые проверки
+## Verified checks
 
-Текущая сборка: **100 автоматических тестов без ошибок** — 52 в ядре, 17 в Paper-модуле, 20 в Bridge и 11 в модуле камеры. Оба JAR собраны; результаты Java находятся в XML-отчётах Maven/Gradle, общий лог этой проверки — `.runtime/build-final.log`.
+Current build: **100 automated tests passing** — 52 in the core, 17 in the Paper module, 20 in the Bridge, and 11 in the camera module. Both JARs have been built; Java results are in Maven/Gradle XML reports, and the combined log for this run is `.runtime/build-final.log`.
 
-Автоматические Java-тесты проверяют геометрию, ограничения, идемпотентность, зависимости чтения, конфликты, прерывание порции, отмену, undo, журналирование, ошибки диска, восстановление и отдельные HTTP/NBT-контракты. Тесты Bridge используют настоящий MCP stdio и имитатор ACP для диалогов, разрешений, отмены и возобновления. Камера имеет проверки HTTP-аутентификации и валидации, без запуска графического клиента.
+Automated Java tests cover geometry, limits, idempotency, read dependencies, conflicts, interrupted slices, cancellation, undo, journaling, disk failures, recovery, and individual HTTP/NBT contracts. Bridge tests use real MCP stdio and a mock ACP agent for conversations, permissions, cancellation, and resumption. Camera tests cover HTTP authentication and validation without launching a graphical client.
 
-На настоящем Paper, в отдельном созданном тестовом мире, успешно выполнены:
+The following scenarios passed on real Paper in a separately created test world:
 
-- Изменение блока после подготовки плана: операция завершается конфликтом, чужой блок сохраняется.
-- Изменение явной зависимости: применение останавливается до записи.
-- Постройка, повтор с тем же ключом и проверяемая отмена; при более поздней внешней правке undo отвергается.
-- Отмена операции, защита неподдерживаемого исходного блока и отказ за пределами области.
-- Принудительное завершение собственного процесса сервера во время 4096-блочной операции, повторный запуск, `recovery_required` без автоматического воспроизведения.
-- Административный разбор восстановления: агентскому ключу отказано, устаревший digest отвергнут, отказ от продолжения сохраняет текущее содержимое мира и разрешает новые операции после записи решения на диск. Защита части не мешает разбору, но продолжает запрещать запись в неё.
-- Полый куб через настоящий MCP: 26 блоков; экспорт `.schem`, библиотека ассетов, undo, импорт на тот же anchor и повторный undo до 27 блоков воздуха.
-- Отсутствующая камера возвращает ошибку, без подмены изображения.
-- После установки мода в Prism построена 575-блочная башня и получены четыре реальных снимка 1280×720. Последний прошёл весь путь Camera → Paper → Bridge → MCP ImageContent. Первый запрос с изменившимся ракурсом завершился отказом; повтор при неподвижном клиенте успешен. [Протокол проверки](ONE_CLIENT_TEST.md).
+- A block changed after plan preparation: the operation ends in a conflict and preserves the other edit.
+- An explicit dependency changed: application stops before writing.
+- Construction, a retry with the same key, and checked undo; undo is rejected after a later external edit.
+- Operation cancellation, protection of an unsupported source block, and rejection outside the allowed area.
+- Forced termination of the test's own server process during a 4096-block operation, restart, and `recovery_required` without automatic replay.
+- Administrative recovery review: the agent key is denied, a stale digest is rejected, and abandonment preserves current world contents and permits new operations after the decision is written to disk. Part protection does not prevent review, but continues to prohibit writes to the part.
+- A hollow cube through real MCP: 26 blocks; `.schem` export, the asset library, undo, import at the same anchor, and another undo restoring 27 blocks of air.
+- A missing camera returns an error without substituting an image.
+- After installing the mod in Prism, a 575-block tower was built and four real 1280×720 captures were obtained. The last completed the full Camera → Paper → Bridge → MCP ImageContent path. The first request failed when the viewpoint changed; a retry with the client stationary succeeded. [Test report](ONE_CLIENT_TEST.md).
 
-Реальный `codex-acp` прошёл `initialize` в отдельном профиле без входа: ACP v1 и поддержка загрузки сессии подтверждены. Это ещё не проверка хода модели или вызова инструментов после авторизации. Тесты не вызывали модель и не расходовали её токены.
+Real `codex-acp` completed `initialize` in a separate profile without login: ACP v1 and session loading support are confirmed. This does not yet test a model turn or tool calls after authentication. The tests did not invoke a model or consume model tokens.
 
-## Существенные границы
+## Significant limitations
 
-**Ручные изменения.** Сравнение ожидаемого и текущего состояния защищает от отличающегося блока непосредственно перед записью. Известные события установки/ломания игроком дополнительно инвалидируют владение блока для undo, даже если игрок вернул прежний материал. Полного перехвата изменений других плагинов, команд, физики и всех переходов A→B→A нет; ревизии известных внешних событий пока не сохраняются между запусками. Нельзя считать этот прототип универсальной системой слияния любых параллельных правок.
+**Manual edits.** Comparing expected and current states protects against a different block immediately before writing. Known player place/break events also invalidate block ownership for undo, even if the player restores the previous material. There is no complete interception of changes from other plugins, commands, physics, or all A→B→A transitions; revisions of known external events are not yet persisted across restarts. This prototype cannot be treated as a universal system for merging arbitrary concurrent edits.
 
-**Авария.** JSON-журнал с fsync заменяет запланированную SQLite. Мир Minecraft и наш журнал не образуют одну транзакцию. Неоднозначная операция после сбоя блокирует новые записи. Доступен явный административный обзор и отказ от продолжения по свежему digest, без изменения мира и с отключением неоднозначного undo. Автоматического replay/rollback нет. Полный журнал загружается при старте и пока не имеет архивирования.
+**Crashes.** A JSON journal with fsync replaces the planned SQLite storage. The Minecraft world and our journal do not form a single transaction. An ambiguous operation after a crash blocks new writes. Explicit administrative review and abandonment using a fresh digest are available, without modifying the world and with ambiguous undo disabled. There is no automatic replay/rollback. The full journal is loaded at startup and does not yet support archival.
 
-**Область и производительность.** Один владелец, проект и мир; не более 4096 блоков и 512 явных зависимостей на план. Запись — до 128 блоков с целевым бюджетом до 5 мс на порцию; стоимость проверки и JVM не позволяют заявлять жёсткую гарантию времени тика. Полная подготовка ограниченного плана пока выполняется на серверном потоке. Долговременные нагрузочные проверки на большом сервере не проводились.
+**Scope and performance.** One owner, project, and world; at most 4096 blocks and 512 explicit dependencies per plan. Writes are limited to 128 blocks with a target budget of up to 5 ms per slice; verification costs and the JVM prevent a hard tick-time guarantee. Full preparation of a bounded plan still runs on the server thread. Long-running load tests on a large server have not been conducted.
 
-**Контекст.** Контекст проекта содержит краткие метаданные, до 20 операций и до 64 частей; точные блоки читаются отдельно. `region_changes` пока возвращает `resync_required`. Поэтому агент повторно читает выбранные участки; обещание «читает только дельты» ещё не реализовано. Диалог ACP имеет сохранение и сводку, но расход модели здесь не измерен.
+**Context.** Project context contains brief metadata, up to 20 operations, and up to 64 parts; exact blocks are read separately. `region_changes` currently returns `resync_required`. The agent therefore rereads selected areas; the promise of reading only deltas is not implemented yet. ACP conversations support persistence and summaries, but model usage has not been measured here.
 
-**Блоки и схематики.** Разрешён ограниченный набор из 61 ванильного материала, включая часть ступеней и плит; точный список возвращает `project_context`. Waterlogged, контейнеры, двери, redstone и другие сложные блоки не поддерживаются. Проверка окружающих блоков намеренно ограничивает использование возле неподдерживаемой среды. Sponge v2 `.schem` реализован без зависимости от WorldEdit: до 4096 блоков, до 64 файлов, повороты кратно 90°, без сущностей, block entities и биомов, без преобразования между версиями игры. Неподдерживаемый контент отвергается, а не удаляется при экспорте.
+**Blocks and schematics.** A limited set of 71 vanilla materials is allowed, including selected stairs and slabs, lanterns, iron chains (`iron_chain` in Minecraft 26.2), iron bars, stone brick walls, oak leaves, moss, gray and brown glass, glowstone, and gold blocks; `project_context` returns the exact list. Leaves are allowed only with `persistent=true` so that they do not decay without a tree. Waterlogged blocks, containers, doors, redstone, and other complex blocks are unsupported. Checks of surrounding blocks intentionally restrict use near unsupported environments. Sponge v2 `.schem` is implemented without a WorldEdit dependency: up to 4096 blocks, up to 64 files, rotations in multiples of 90°, no entities, block entities, or biomes, and no conversion between game versions. Its strict codec currently supports the original 61-material palette; the ten new decorative materials are available through normal building operations. Unsupported content is rejected rather than removed during export.
 
-**Строительный язык.** Есть box, line, cylinder и repeat. Арки, произвольные трансформации, декоративные палитры, исполнение JavaScript/Python и автоматическое согласование рецептов с ручными правками пока отсутствуют. Зарегистрированная часть содержит точную маску фактически записанных блоков, а не весь её bounding box.
+**Building language.** Box, line, cylinder, and repeat are available. Arches, arbitrary transforms, decorative palettes, JavaScript/Python execution, and automatic reconciliation of recipes with manual edits are not yet available. A registered part contains an exact mask of blocks actually written, not its entire bounding box.
 
-**Камера.** Нужен настроенный spectator-клиент; в проверенном сценарии это тот же игрок, что и владелец проекта. Во время снимка он не может продолжать обычное строительство. Автоматического возврата режима и исходной позиции нет. Готовность кадра эвристическая: `serverRevisionVerified: false`. Доступность соседних чанков и стабильность рендера не доказывают получение всех серверных обновлений. Реальная стройка и снимки проверены; сторонние шейдеры, отключение посреди кадра и все варианты зависания окна ещё не проверены.
+**Camera.** A configured spectator client is required; in the tested scenario this is the same player as the project owner. During capture, that player cannot continue normal building. Game mode and original position are not restored automatically. Frame readiness is heuristic: `serverRevisionVerified: false`. Neighboring chunk availability and stable rendering do not prove receipt of all server updates. Real construction and captures have been tested; third-party shaders, disconnection during capture, and all forms of window freezing have not yet been tested.
 
-**ACP.** Выделены отдельные HOME/CODEX_HOME, отключены лишние интеграции, shell и передача административного токена. Это не изоляция на уровне ОС. Закреплённый адаптер переводит режим `read-only` в `workspace-write`; временные пути могут оставаться доступными, а закреплённый CLI оставляет флаг `unified_exec` включённым при отключённом `shell_tool`. Дополнительные запросы разрешений пока отклоняются. Поведение разрешений динамического Minecraft MCP требует проверки первого настоящего хода. Подробности и диагностика — в [Bridge README](../bridge/README.md).
+**ACP.** Separate HOME/CODEX_HOME directories are used; extra integrations, shell, and forwarding of the administrator token are disabled. This is not OS-level isolation. The pinned adapter maps `read-only` mode to `workspace-write`; temporary paths may remain accessible, and the pinned CLI keeps the `unified_exec` flag enabled when `shell_tool` is disabled. Additional permission requests are currently rejected. Permissions for the dynamically supplied Minecraft MCP need testing in the first real turn. Details and diagnostics are in the [Bridge README](../bridge/README.md).
 
-## Следующий приёмочный этап
+## Next acceptance stage
 
-1. Пользователь входит в выделенный Codex-профиль, подключается к Paper и привязывает владельца. Проверяем маленькую постройку из игрового `/ai`, поток ответа, использование MCP и отмену.
-2. Расширяем проверенный сценарий Prism с одним клиентом: проверяем отключение/зависание посреди снимка и удобное переключение между строительством и камерой.
-3. Проходим цикл «построил → посмотрел → исправил» и только после этого уточняем готовность релиза, лимиты, дельты контекста и расширение геометрии.
+1. The user logs in to the dedicated Codex profile, connects to Paper, and binds the owner. Test a small build requested through in-game `/ai`, response streaming, MCP use, and cancellation.
+2. Extend the verified single-client Prism scenario: test disconnection/freezing during capture and convenient switching between building and camera use.
+3. Complete the build → inspect → correct cycle, then reassess release readiness, limits, context deltas, and geometry extensions.

@@ -1,56 +1,58 @@
 # minecraft-builder-mcp
 
-Строительный редактор Minecraft для совместной работы человека и ИИ-агента.
+A Minecraft building editor for collaboration between a human and an AI agent.
 
-Рабочий прототип: Paper-плагин, ядро редактирования, MCP/ACP Bridge и Fabric-мод камеры. Строительство, конфликты, undo, аварийное восстановление и `.schem` проверены на локальном Paper через HTTP и настоящий MCP stdio. Камера проверена в Prism с одним клиентом: настоящий PNG 1280×720 передан через MCP. Вход в отдельный профиль Codex и первый ход модели через ACP ещё предстоит проверить.
+Working prototype: a Paper plugin, an editing core, an MCP/ACP Bridge, and a Fabric camera mod. Building, conflicts, undo, crash recovery, and `.schem` have been tested against local Paper through HTTP and real MCP stdio. The camera has been tested in Prism with one client: a real 1280×720 PNG was delivered through MCP. Signing in to the separate Codex profile and completing the first model turn through ACP still need verification.
 
-## Что умеет
+## Features
 
-- Читает ограниченные участки и строит коробки, линии, цилиндры и повторяющиеся элементы.
-- Сначала сохраняет план, затем применяет его порциями с проверкой текущих блоков. Ручное изменение останавливает конфликтующую запись; отмена тоже проверяет состояние мира.
-- Хранит журнал на диске, различает повтор запроса и новую операцию, останавливает неоднозначные операции после сбоя.
-- Сохраняет именованные части и их защиту, экспортирует и импортирует ограниченный Sponge v2 `.schem` через тот же механизм планов.
-- Даёт 14 MCP-инструментов и `/ai` для игрового чата через закреплённый `codex-acp`.
-- Снимает настоящие изображения через локальный Worker на spectator-клиенте. Проверен также один клиент с временным переключением владельца в spectator.
+- Reads bounded regions and builds boxes, lines, cylinders, and repeated elements.
+- Saves a plan before applying it in slices with live block checks. Manual changes stop conflicting writes; undo also checks the current world state.
+- Keeps an on-disk journal, distinguishes request retries from new operations, and stops ambiguous operations after a crash.
+- Saves named parts and their protection, and exports/imports a limited Sponge v2 `.schem` subset through the same planning engine.
+- Provides 14 MCP tools and `/ai` game chat through a pinned `codex-acp` adapter.
+- Captures real images through a local worker on a spectator client. A single client with the owner temporarily in spectator has also been tested.
 
-Сейчас это один владелец, один проект и один мир, до 4096 блоков на план, только загруженные чанки и ограниченный набор ванильных материалов. Полный журнал дельт, автоматическое объединение ручных правок и все возможности дизайн-документа ещё не реализованы. [Подробный статус и ограничения](docs/IMPLEMENTATION.md).
+The current scope is one owner, one project, and one world, with at most 4096 blocks per plan, loaded chunks only, and a limited vanilla material palette. A complete delta history, automatic merging of manual edits, and the full design document are not implemented yet. [Detailed status and limitations](docs/IMPLEMENTATION.md).
 
-## Сборка
+The building palette contains 71 materials. Decorative additions include lanterns, `iron_chain` (the Minecraft 26.2 ID), iron bars, stone brick walls, persistent oak leaves, moss, gray/brown stained glass, glowstone, and gold blocks. Leaves require `persistent=true`; waterlogged states remain unsupported. The strict `.schem` codec currently retains the original 61-material subset.
 
-Проверенная среда — Linux x64, Minecraft/Paper 26.2, Java 25, Node.js 22.22.3+. Из корня репозитория:
+## Build
+
+Verified environment: Linux x64, Minecraft/Paper 26.2, Java 25, and Node.js 22.22.3+. From the repository root:
 
 ```bash
 ./scripts/build.sh
 ```
 
-Скрипт загружает закреплённые JDK 25.0.2 и Maven 3.9.11 в пользовательский кэш с проверкой хешей, устанавливает зависимости Bridge по lockfile и собирает все три компонента с тестами. Системная Java не меняется. Нужны уже установленные Python 3, Node.js и npm. [Закреплённые версии](docs/compatibility.json).
+The script downloads pinned JDK 25.0.2 and Maven 3.9.11 into the user cache with hash verification, installs Bridge dependencies from the lockfile, and builds all three components with tests. It does not replace system Java. Python 3, Node.js, and npm must already be installed. [Pinned versions](docs/compatibility.json).
 
-Результаты:
+Build outputs:
 
-- `paper-plugin/target/paper-plugin-0.1.0-SNAPSHOT.jar` — серверный плагин, ядро включено.
-- `camera-mod/build/libs/minecraft-builder-camera-0.1.0-SNAPSHOT.jar` — клиентский мод.
-- `bridge/dist/` — исполняемые MCP/ACP-компоненты.
+- `paper-plugin/target/paper-plugin-0.1.0-SNAPSHOT.jar` — server plugin, including the editing core.
+- `camera-mod/build/libs/minecraft-builder-camera-0.1.0-SNAPSHOT.jar` — client mod.
+- `bridge/dist/` — executable MCP/ACP components.
 
-## Локальный запуск
+## Local setup
 
-1. Подготовить отдельный тестовый Paper. На первой установке прочитать [Minecraft EULA](https://www.minecraft.net/eula), затем принять её явно:
+1. Prepare a separate test Paper server. On first installation, read the [Minecraft EULA](https://www.minecraft.net/eula), then explicitly accept it:
 
    ```bash
    python3 scripts/dev-server.py --accept-eula --run
    ```
 
-   Для последующих запусков достаточно `python3 scripts/dev-server.py --run`. Сервер хранится в `.runtime/server`, слушает `127.0.0.1:25575`, вход в Minecraft остаётся включён. Для уже подготовленного в этой рабочей папке сервера EULA принята пользователем.
+   For subsequent runs, use `python3 scripts/dev-server.py --run`. The server lives in `.runtime/server`, listens on `127.0.0.1:25575`, and keeps Minecraft authentication enabled. The user has accepted the EULA for the server already prepared in this workspace.
 
-2. Подключиться клиентом Minecraft Java 26.2 к `127.0.0.1:25575`. В консоли **этого** сервера выдать своему игровому имени `op <имя>`. В игре выполнить:
+2. Connect a Minecraft Java 26.2 client to `127.0.0.1:25575`. In **that server's** console, grant your game account operator access with `op <name>`. In the game, run:
 
    ```text
    /ai setup
    /ai area here
    ```
 
-   Вторая команда выбирает участок вокруг игрока. Чанки должны быть загружены, а рядом с местами записи — поддерживаемые блоки. Точные границы можно задать через `/ai area minX minY minZ maxX maxY maxZ`.
+   The second command selects an area around the player. Chunks must be loaded, and blocks next to writes must be supported. Set exact bounds with `/ai area minX minY minZ maxX maxY maxZ`.
 
-3. В другом терминале из корня проекта проверить настройки и войти в отдельный профиль Codex:
+3. From another terminal at the project root, check the settings and sign in to the separate Codex profile:
 
    ```bash
    python3 scripts/bridge.py doctor
@@ -58,25 +60,25 @@
    python3 scripts/bridge.py login --status
    ```
 
-   Вход выполняется самим пользователем по device code. Помощник читает локальные токены Paper без вывода в терминал. Обычный профиль `~/.codex` не копируется; состояние проекта хранится в `.runtime/bridge-state`. Первый настоящий ход ещё должен подтвердить авторизацию и разрешения MCP у закреплённого адаптера.
+   The user completes sign-in using a device code. The helper reads local Paper tokens without printing them. It does not copy the normal `~/.codex` profile; project state lives in `.runtime/bridge-state`. The first real turn still needs to confirm authentication and MCP permissions in the pinned adapter.
 
-4. Запустить чат:
+4. Start chat:
 
    ```bash
    python3 scripts/bridge.py chat
    ```
 
-   Теперь можно отправить `/ai Построй небольшую башню рядом со мной`. Для выбора модели доступна переменная `MCB_MODEL`; без неё выбор остаётся за адаптером. `/ai status` показывает состояние, `/ai stop` останавливает дальнейшую запись и запрос к агенту. Уже сделанные изменения отменяются отдельным проверяемым undo.
+   You can now send `/ai Build a small tower next to me`. Set `MCB_MODEL` to choose a model; otherwise the adapter chooses. `/ai status` reports status, and `/ai stop` stops further writes and the agent request. Changes already made require a separate checked undo.
 
-MCP можно подключить к внешнему клиенту командой `python3 scripts/bridge.py mcp`. Область владельца берётся из конфигурации Paper. Команда предназначена для запуска клиентом MCP по stdio, а не для интерактивного терминала.
+Connect MCP to an external client using `python3 scripts/bridge.py mcp`. Owner scope comes from the Paper configuration. This command is intended for a client that launches MCP over stdio, rather than an interactive terminal.
 
-## Камера
+## Camera
 
-Обычному игроку мод не нужен. Для наблюдателя установить Fabric Loader и API указанных версий, добавить JAR камеры в отдельный профиль 26.2. Перед запуском передать этому процессу `MCB_CAMERA_TOKEN` из поля `camera-token` приватной конфигурации плагина; в Paper заполнить `camera-player-uuid` и перезапустить сервер. Наблюдатель должен быть подключён к нему в spectator.
+An ordinary player does not need the mod. For the observer, install the pinned Fabric Loader and API versions and add the camera JAR to a separate 26.2 profile. Before launching, pass `MCB_CAMERA_TOKEN` from the plugin's private `camera-token` setting to that process; set `camera-player-uuid` in Paper and restart the server. The observer must connect in spectator mode.
 
-Если строитель и наблюдатель играют одновременно, нужны допустимые отдельные игровые сессии. Для одного клиента можно указать UUID владельца и временно включать spectator. Такой сценарий уже проверен в профиле Prism **26.2 MCP Building**; секрет передаётся Java через `scripts/camera-wrapper.py`, без добавления в логируемые переменные Prism. Точный порядок и ограничения снимка — в [инструкции камеры](camera-mod/README.md). После подключения `/ai camera save name` сохраняет ракурс владельца. [Результат локального теста с одним клиентом](docs/ONE_CLIENT_TEST.md).
+If the builder and observer play simultaneously, they need valid separate game sessions. With one client, set the camera UUID to the owner's UUID and temporarily enable spectator mode. This scenario has been verified in the Prism profile **26.2 MCP Building**; `scripts/camera-wrapper.py` passes the secret to Java without adding it to Prism's logged variables. See the [camera instructions](camera-mod/README.md) for the exact procedure and capture limitations. Once connected, `/ai camera save name` saves the owner's viewpoint. [Local single-client test results](docs/ONE_CLIENT_TEST.md).
 
-## Проверки и документы
+## Tests and documentation
 
 ```bash
 ./mvnw test
@@ -84,12 +86,12 @@ npm --prefix bridge test
 JAVA_HOME="$HOME/.cache/minecraft-builder-mcp/jdk-25.0.2" camera-mod/gradlew --project-dir camera-mod test
 ```
 
-`python3 scripts/live-server-test.py` запускает и останавливает собственный процесс в `.runtime/server`, проверяет конфликты и undo, намеренно завершает этот процесс для проверки восстановления, затем прогоняет MCP и `.schem`. Для него сначала собрать проект, один раз запустить плагин и принять EULA; текущий сервер должен быть остановлен. Проверка предназначена для подготовленного тестового мира и изменяет только ограниченные тестовые области. Результаты сохраняются в `.runtime/live-server-results.json` и `.runtime/live-mcp-results.log`.
+`python3 scripts/live-server-test.py` starts and stops its own process in `.runtime/server`, checks conflicts and undo, deliberately terminates that process to test recovery, and then exercises MCP and `.schem`. First build the project, run the plugin once, and accept the EULA; any existing server must be stopped. This test targets the prepared test world and changes only bounded test regions. Results are saved in `.runtime/live-server-results.json` and `.runtime/live-mcp-results.log`.
 
-- [Дизайн проекта и дальнейшие этапы](docs/DESIGN.md).
-- [Что реализовано и чем проверено](docs/IMPLEMENTATION.md).
-- [Готический зал по референсу: 29 354 блока в живом мире](docs/builds/GOTHIC_HALL.md).
-- [Протокол](docs/PROTOCOL.md), [ядро и журнал](world-core/README.md).
-- [Bridge, вход и ограничения ACP](bridge/README.md).
+- [Project design and future phases](docs/DESIGN.md).
+- [Implementation status and verification](docs/IMPLEMENTATION.md).
+- [Gothic hall from a reference: 29,354 blocks in the live world](docs/builds/GOTHIC_HALL.md).
+- [Protocol](docs/PROTOCOL.md), [editing core and journal](world-core/README.md).
+- [Bridge, sign-in, and ACP limitations](bridge/README.md).
 
-Git инициализирован, ветка `main`. Сгенерированные миры, секреты, зависимости и сборки исключены через `.gitignore`.
+Git is initialized on branch `main`. Generated worlds, secrets, dependencies, and build outputs are excluded by `.gitignore`.

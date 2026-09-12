@@ -1,407 +1,407 @@
-# minecraft-builder-mcp — дизайн-документ
+# minecraft-builder-mcp — design document
 
-Версия документа: 0.1 · Дата: 12 сентября 2026 года
+Document version: 0.1 · Date: September 12, 2026
 
-Статус: целевой дизайн. Первый прототип создан; фактические возможности, проверки и отличия от этого документа перечислены в [IMPLEMENTATION.md](IMPLEMENTATION.md). Разделы ниже описывают также ещё не реализованные требования.
+Status: target design. The first prototype has been created; its actual capabilities, tests, and deviations from this document are listed in [IMPLEMENTATION.md](IMPLEMENTATION.md). The sections below also describe requirements that have not yet been implemented.
 
-## 1. Назначение
+## 1. Purpose
 
-Создать строительную среду для Minecraft Java Edition, в которой человек и ИИ-агент совместно проектируют, строят и редактируют карты. Пользователь общается с Codex в игровом чате или во внешнем клиенте. Агент получает структурированные сведения о мире, применяет массовые изменения через MCP, смотрит реальные снимки и исправляет результат.
+Create a building environment for Minecraft Java Edition in which a person and an AI agent collaboratively design, build, and edit maps. The user talks to Codex through in-game chat or an external client. The agent receives structured information about the world, applies bulk changes through MCP, inspects real captures, and corrects the result.
 
-Основной сценарий: «Построй башню здесь» → обследование участка → строительство → снимки → уточнение пропорций. Пользователь может параллельно строить вручную, а затем попросить: «Сохрани мои окна, добавь два этажа и переделай крышу».
+The main scenario is: “Build a tower here” → site inspection → construction → captures → proportion adjustments. The user can build manually in parallel and then ask: “Keep my windows, add two floors, and redo the roof.”
 
-Результат — обычные ванильные блоки. Карта должна оставаться пригодной к использованию после удаления наших компонентов. История, рецепты и названия частей хранятся отдельно от игровых блоков.
+The result consists of ordinary vanilla blocks. The map must remain usable after our components are removed. History, recipes, and part names are stored separately from game blocks.
 
-## 2. Решения и рабочие предположения
+## 2. Decisions and working assumptions
 
-Из обсуждения следуют требования: Paper как строительная среда с перспективой мини-игр; Codex через готовый `codex-acp`; Minecraft MCP для работы с миром; виртуальные камеры; массовые операции; именованные части; сохранение ручных правок; экономное использование контекста; отмена и перенос построек.
+The discussion establishes these requirements: Paper as a building environment with future minigame use; Codex through the existing `codex-acp`; Minecraft MCP for world interaction; virtual cameras; bulk operations; named parts; preservation of manual edits; economical context use; undo; and transferring builds.
 
-Для этого документа приняты следующие проектные решения, которые можно изменить до реализации:
+This document adopts the following design decisions, which may be changed before implementation:
 
-- Первая версия рассчитана на одного владельца и небольшой круг доверенных строителей, один Paper-сервер и одну активную операцию записи на строительную область.
-- Плагин на сервере является единственным компонентом нашей системы, который непосредственно изменяет мир.
-- Камеры обслуживает отдельный клиент Minecraft с Fabric-модом. Обычному игроку клиентский мод для чата не требуется.
-- Bridge написан на TypeScript; Paper-плагин и Fabric-мод — на Java. Точные версии инструментов фиксируются после проверки совместимости.
-- Строительный язык первой версии — ограниченное декларативное описание геометрии и повторений. Произвольный Python/JavaScript внутри сервера не выполняется.
-- Снимки, конфликты и история не имеют собственной модели внутри MCP. Их интерпретирует агент с поддержкой изображений.
-- Пользовательская команда на строительство разрешает обычные изменения внутри выбранной области; подтверждение каждого пакета блоков не требуется. Настоящие конфликты и выход за полномочия обрабатываются отдельно.
+- The first version targets one owner and a small group of trusted builders, one Paper server, and one active write operation per building area.
+- The server plugin is the only component of our system that modifies the world directly.
+- Cameras are served by a separate Minecraft client with a Fabric mod. Ordinary players do not need a client mod for chat.
+- The Bridge is written in TypeScript; the Paper plugin and Fabric mod in Java. Exact tool versions are pinned after compatibility checks.
+- The first version's building language is a restricted declarative description of geometry and repetition. Arbitrary Python/JavaScript is not executed inside the server.
+- Captures, conflicts, and history do not have their own model within MCP. An image-capable agent interprets them.
+- A user's building command authorizes ordinary changes within the selected area; approval is not required for every batch of blocks. Actual conflicts and actions outside the granted scope are handled separately.
 
-## 3. Почему нужны клиентская и серверная части
+## 3. Why both client and server components are needed
 
-Клиентский мод может управлять камерой, снимать изображение, читать присланные клиенту чанки и отправлять команды, разрешённые игроку. Этого достаточно для прототипа, который строит через серверные команды. Но такой клиент не является источником окончательного состояния мира и не обеспечивает согласованную проверку и запись блоков на сервере.
+A client mod can control the camera, capture an image, read chunks sent to the client, and send commands the player is allowed to use. This is sufficient for a prototype that builds through server commands. However, such a client is not the authoritative source of world state and cannot provide coordinated block validation and writing on the server.
 
-Серверный компонент нужен для достоверного чтения участка, проверки прав, сравнения состояний непосредственно перед записью, журналирования и применения изменений с ограничением нагрузки. Он не умеет сам отрисовывать игровой вид. Клиентское и серверное исполнение в Minecraft разделены; рендеринг выполняет клиент. [Разделение сторон в Fabric](https://wiki.fabricmc.net/tutorial%3Aside).
+A server component is needed for authoritative region reads, permission checks, state comparisons immediately before writing, journaling, and applying changes under load limits. It cannot render the game view itself. Client and server execution are separate in Minecraft; rendering is performed by the client. [Fabric side separation](https://wiki.fabricmc.net/tutorial%3Aside).
 
-Целевая установка может целиком работать на одном компьютере: Paper, Bridge, Codex и клиент камеры. Выделенная машина и аренда хостинга не обязательны. Отдельный наблюдатель потребует собственной допустимой игровой сессии; нельзя предполагать, что одна учётная запись позволит одновременно держать игрока и камеру на одном сервере. При отсутствии второй сессии возможен режим камеры в клиенте пользователя с временным переключением вида; это отдельный компромисс интерфейса.
+The target installation can run entirely on one computer: Paper, Bridge, Codex, and the camera client. A dedicated machine or rented hosting is not required. A separate observer needs its own permitted game session; we cannot assume that one account can keep both the player and camera connected to the same server simultaneously. If a second session is unavailable, camera mode in the user's client with temporary view switching is possible; this is a separate interface tradeoff.
 
-Одиночная игра содержит встроенный сервер. В дальнейшем можно добавить Fabric-модуль для его серверной стороны, сохранив MCP-контракты. Это устраняет отдельный процесс Paper, но требует другого адаптера мира. Одного мода, исполняющегося только на логической клиентской стороне, для полных гарантий недостаточно.
+Single-player includes an integrated server. A Fabric module for its server side can be added later while retaining the MCP contracts. This removes the separate Paper process but requires another world adapter. A mod running only on the logical client side is insufficient for the full guarantees.
 
-## 4. Платформа и совместимость
+## 4. Platform and compatibility
 
-Кандидат для первого прототипа — Minecraft/Paper 26.2 и Java 25. На дату документа страница загрузки предлагает Paper 26.2, а документация указывает Java 25 для веток 26.1+. Это подтверждает наличие платформы, но не совместимость всех наших зависимостей. [Загрузка Paper](https://papermc.io/downloads/paper), [требования Java](https://docs.papermc.io/paper/getting-started/).
+The candidate for the first prototype is Minecraft/Paper 26.2 with Java 25. On the document date, the download page offers Paper 26.2, and the documentation specifies Java 25 for the 26.1+ branches. This confirms platform availability, not compatibility of all our dependencies. [Paper downloads](https://papermc.io/downloads/paper), [Java requirements](https://docs.papermc.io/paper/getting-started/).
 
-До реализации основной функциональности необходимо зафиксировать точные версии Paper, WorldEdit, Fabric Loader/API, Codex, `codex-acp`, MCP/ACP SDK и Node.js. Обновление зависимостей не должно происходить автоматически при каждом запуске. Версии и хеши сборок войдут в будущий файл совместимости.
+Before implementing the main functionality, exact versions of Paper, WorldEdit, Fabric Loader/API, Codex, `codex-acp`, the MCP/ACP SDKs, and Node.js must be pinned. Dependencies must not update automatically on every launch. Build versions and hashes will be recorded in a future compatibility file.
 
-WorldEdit используется для выделений и формата `.schem`; возможность использовать его как механизм записи проверяется отдельно. Его `EditSession` поддерживает пакетирование и историю, однако это не заменяет нашу проверку конфликтов, постоянный журнал и управление временем исполнения. Буферизация не должна переносить фактическую запись за пределы проверенного серверного шага. [WorldEdit Edit Sessions](https://worldedit.enginehub.org/en/latest/api/concepts/edit-sessions/).
+WorldEdit is used for selections and the `.schem` format; using it as the write mechanism is evaluated separately. Its `EditSession` supports batching and history, but this does not replace our conflict checks, persistent journal, or execution-time control. Buffering must not defer actual writes beyond the validated server step. [WorldEdit Edit Sessions](https://worldedit.enginehub.org/en/latest/api/concepts/edit-sessions/).
 
-Начальный гарантируемый набор — ванильные строительные блоки без инвентарей и пользовательского NBT, включая протестированные состояния брёвен, ступеней и плит. Допускается воздух как результат удаления. Двери и другие составные конструкции подключаются только после реализации неделимых групп изменений. Гравитационные блоки, жидкости, редстоун, сущности и block entities не входят в первоначальную гарантию редактирования и отмены.
+The initial guaranteed set consists of vanilla building blocks without inventories or custom NBT, including tested log, stair, and slab states. Air is allowed as the result of deletion. Doors and other multipart structures are added only after indivisible change groups are implemented. Gravity-affected blocks, fluids, redstone, entities, and block entities are outside the initial editing and undo guarantees.
 
-Ограничение действует и на исходное содержимое: операция не может молча затереть сундук или другой неподдерживаемый блок. Предварительная проверка обнаруживает это до применения и возвращает понятную причину.
+The restriction also applies to existing content: an operation must not silently overwrite a chest or another unsupported block. Preflight validation detects this before application and returns a clear reason.
 
-## 5. Границы первой версии
+## 5. First-version scope
 
-В v0.1 входят:
+v0.1 includes:
 
-- Команды чата, отдельная сессия проекта, поток коротких сообщений о ходе работы и остановка.
-- Выделенная строительная область и локальный осмотр мира.
-- Компактные описания форм, повторения, палитры и воспроизводимый `seed`.
-- Предварительный план, подсчёт изменений и применение порциями.
-- Именованные части с точными наборами принадлежащих им блоков.
-- Проверка изменений после чтения, остановка на конфликте и отмена с проверками.
-- Постоянный журнал операций и обнаружение незавершённой записи после перезапуска.
-- Одна обслуживающая камера, несколько сохранённых ракурсов и выдача изображений через MCP.
-- Импорт и экспорт `.schem` в пределах поддерживаемого набора данных.
+- Chat commands, a separate project session, a stream of short progress messages, and stopping.
+- A designated building area and local world inspection.
+- Compact shape descriptions, repetition, palettes, and a reproducible `seed`.
+- A prepared plan, change counts, and application in slices.
+- Named parts with exact sets of blocks belonging to them.
+- Checks for changes since reading, stopping on conflict, and checked undo.
+- A persistent operation journal and detection of unfinished writes after restart.
+- One serving camera, several saved viewpoints, and image delivery through MCP.
+- `.schem` import and export within the supported data set.
 
-За пределами v0.1: публичный сервис для любых игроков, несколько одновременно пишущих агентов в одной области, Folia, полноценные мини-игры, произвольный доступ к серверной консоли, генерация 3D сторонними сервисами, автоматическая вокселизация мешей, универсальная физическая симуляция, произвольные скрипты с доступом к ОС и интеллектуальное перенесение любой ручной правки при смене геометрии.
+Outside v0.1: a public service for arbitrary players, multiple agents writing simultaneously in one area, Folia, complete minigames, arbitrary server-console access, third-party 3D generation services, automatic mesh voxelization, general-purpose physics simulation, arbitrary scripts with OS access, and intelligent transfer of any manual edit when geometry changes.
 
-Система помогает строить карты для мини-игр, но не реализует правила самих мини-игр. Автоматическая оценка красоты не является гарантией качества.
+The system helps build minigame maps but does not implement the minigames' rules. Automatic aesthetic assessment is not a quality guarantee.
 
-## 6. Компоненты и связи
+## 6. Components and connections
 
-Путь запроса: игровой чат → Paper-плагин → Bridge как ACP-клиент → `codex-acp` → Codex. Путь изменения: Codex → Minecraft MCP в Bridge → Paper-плагин → мир. Путь изображения: Codex → Minecraft MCP → Camera Worker → Fabric-клиент → изображение.
+Request path: in-game chat → Paper plugin → Bridge as ACP client → `codex-acp` → Codex. Change path: Codex → Minecraft MCP in the Bridge → Paper plugin → world. Image path: Codex → Minecraft MCP → Camera Worker → Fabric client → image.
 
-### Paper-плагин
+### Paper plugin
 
-Отвечает за команды, личности игроков, области, полномочия, снимки состояния блоков, валидацию планов, расписание применения и постоянную историю. Плагин проверяет ограничения независимо от того, что обещали агент и Bridge.
+Responsible for commands, player identities, regions, permissions, block-state snapshots, plan validation, application scheduling, and persistent history. The plugin enforces limits independently of any promises made by the agent or Bridge.
 
 ### Bridge
 
-Запускает закреплённую версию `codex-acp`, реализует ACP-клиент и предоставляет инструменты Minecraft MCP. Хранит связь проекта с диалогом, форматирует сообщения для игрового чата и ограничивает объём данных, передаваемых модели. Не становится альтернативным источником истины о блоках.
+Launches the pinned `codex-acp` version, implements the ACP client, and exposes Minecraft MCP tools. Maintains the project's connection to its conversation, formats messages for in-game chat, and limits the amount of data sent to the model. It does not become an alternative source of truth about blocks.
 
-`codex-acp` уже реализует преобразование ACP в операции Codex App Server, поддерживает изображения и подключение MCP-серверов. Поэтому отдельный ACP-адаптер Codex в проекте не пишется. Возможности конкретной закреплённой версии проверяются при установлении соединения. [Репозиторий codex-acp](https://github.com/agentclientprotocol/codex-acp).
+`codex-acp` already translates ACP into Codex App Server operations and supports images and MCP server connections. The project therefore does not implement a separate Codex ACP adapter. The capabilities of the particular pinned version are checked during connection setup. [codex-acp repository](https://github.com/agentclientprotocol/codex-acp).
 
 ### Camera Worker
 
-Управляет очередью снимков и подключённым Fabric-клиентом. Хранит ракурсы, проверяет загрузку сцены и возвращает изображения с метаданными. Отказ камеры не уничтожает историю и не мешает чтению блоков; задача явно получает статус «визуально не проверено».
+Manages the capture queue and the connected Fabric client. Stores viewpoints, checks scene loading, and returns images with metadata. Camera failure does not destroy history or prevent block reads; the task explicitly receives a “not visually verified” status.
 
-### Хранилища
+### Storage
 
-Плагин хранит SQLite для метаданных и индексирования, а крупные снимки и изменения — в сжатых файлах с контрольными суммами. Он единственный писатель своей базы. Bridge отдельно хранит ACP-сессии и компактные сводки; Camera Worker — изображения. Общая база, которую одновременно напрямую меняют Java и Node.js, не используется.
+The plugin stores metadata and indexes in SQLite, and large snapshots and changes in compressed files with checksums. It is the only writer to its database. The Bridge separately stores ACP sessions and compact summaries; the Camera Worker stores images. There is no shared database directly modified by both Java and Node.js.
 
-Локальные соединения по умолчанию привязаны к loopback и защищены отдельными секретами компонентов. Для удалённой установки предполагается SSH-туннель или проверенное защищённое соединение; публичный доступ к интерфейсу изменения мира не нужен.
+Local connections bind to loopback by default and are protected by separate component secrets. Remote installations are expected to use an SSH tunnel or a verified secure connection; the world-editing interface does not need public access.
 
-## 7. Сессии и игровой интерфейс
+## 7. Sessions and the in-game interface
 
-Основные команды, проектируемые для v0.1:
+Main commands proposed for v0.1:
 
-- `/ai <текст>` — сообщение агенту в активном проекте.
-- `/ai project create <имя>` и `/ai project use <имя>` — создание и выбор проекта.
-- `/ai area set` — зафиксировать выбранный участок после проверки размеров и прав.
-- `/ai status` — состояние текущего запроса, операции и камеры.
-- `/ai stop` — остановить агентский ход и запросить остановку активного изменения мира.
-- `/ai undo <operation>` — подготовить и применить проверяемую отмену собственной операции.
-- `/ai camera save <имя>` — сохранить положение и направление взгляда.
-- `/ai protect <part>` — защитить часть от изменений агента.
+- `/ai <text>` — message the agent in the active project.
+- `/ai project create <name>` and `/ai project use <name>` — create and select a project.
+- `/ai area set` — commit the selected region after checking its size and permissions.
+- `/ai status` — show the current request, operation, and camera status.
+- `/ai stop` — stop the agent turn and request cancellation of the active world change.
+- `/ai undo <operation>` — prepare and apply checked undo for the user's own operation.
+- `/ai camera save <name>` — save the position and view direction.
+- `/ai protect <part>` — protect a part from agent changes.
 
-Обычный общий чат не отправляется модели целиком. Сообщения `/ai` и явные упоминания передаются только после проверки отправителя. Ответ по умолчанию виден инициатору; общий строительный канал можно добавить настройкой.
+Ordinary public chat is not sent to the model in full. `/ai` messages and explicit mentions are forwarded only after sender validation. Replies are visible to the initiator by default; a shared building channel can be added through configuration.
 
-На проект назначается очередь запросов. В v0.1 один активный ход агента на проект; новые сообщения очередятся, а изменение задания во время работы требует согласованного прерывания. UUID игрока, UUID мира и идентификатор проекта берутся с сервера. Модель не может подменить их текстом запроса.
+Each project has a request queue. v0.1 allows one active agent turn per project; new messages are queued, and changing the task during execution requires coordinated interruption. The player UUID, world UUID, and project ID come from the server. The model cannot replace them through prompt text.
 
-Bridge хранит идентификатор ACP-сессии, но проект не зависит от вечной доступности этого диалога. При невозможности возобновления создаётся новая сессия и передаются сводка проекта, текущая операция и ссылки на данные. Подключение к текущему диалогу настольного Codex автоматически не предполагается. Жизненный цикл сверяется с [ACP Session Setup](https://agentclientprotocol.com/protocol/v1/session-setup) и [ACP Prompt Turn](https://agentclientprotocol.com/protocol/v1/prompt-turn).
+The Bridge stores the ACP session ID, but the project does not depend on that conversation remaining available forever. If resumption is impossible, a new session receives the project summary, current operation, and data references. Automatic attachment to the current Codex desktop conversation is not assumed. The lifecycle is checked against [ACP Session Setup](https://agentclientprotocol.com/protocol/v1/session-setup) and [ACP Prompt Turn](https://agentclientprotocol.com/protocol/v1/prompt-turn).
 
-Чат показывает этапы и результат, а не каждую установку блока. Сообщения ограничены по длине и частоте. В сообщении о конфликте пользователь видит часть здания, место и последствия выбора; технические идентификаторы доступны в деталях.
+Chat displays stages and results, not every block placement. Message length and frequency are limited. A conflict message shows the user the building part, location, and consequences of their choice; technical identifiers are available in the details.
 
-## 8. Модель данных
+## 8. Data model
 
-**Project:** стабильный ID, владелец, участники, world UUID, world epoch, разрешённые области, политика блоков, настройки качества и краткая сводка замысла. Epoch меняется при восстановлении или замене мира, чтобы старые планы нельзя было применить к другой копии.
+**Project:** stable ID, owner, members, world UUID, world epoch, permitted regions, block policy, quality settings, and a brief design summary. The epoch changes when a world is restored or replaced so that old plans cannot be applied to a different copy.
 
-**Region:** измерение, включительные целочисленные границы `min/max`, ограничения чтения и записи. Координаты блоков хранятся целыми; камеры — вещественными. Высота и граница мира берутся из сервера. Локальные координаты рецептов имеют явно заданную точку привязки и преобразование в координаты мира.
+**Region:** dimension, inclusive integer `min/max` bounds, and read/write limits. Block coordinates are integers; camera coordinates are floating-point values. World height and border come from the server. Local recipe coordinates have an explicit anchor and transformation into world coordinates.
 
-**Part:** ID, имя, родитель, теги, точная маска блоков, ограничивающий объём, точка привязки, ревизия, режим защиты, ссылка на рецепт. Ограничивающий прямоугольник нужен для поиска и не означает владения всем его содержимым. В v0.1 редактируемые дочерние маски не пересекаются; родитель объединяет их.
+**Part:** ID, name, parent, tags, exact block mask, bounding volume, anchor, revision, protection mode, and recipe reference. The bounding box is used for lookup and does not imply ownership of everything inside it. In v0.1, editable child masks do not overlap; the parent is their union.
 
-**Recipe:** версия языка, версия генератора, параметры, палитра, seed, подчасти и преобразования. Одинаковые входы и версии должны порождать одинаковый план. Повороты преобразуют и координаты, и направленные состояния блоков. Неподдерживаемые преобразования отклоняются.
+**Recipe:** language version, generator version, parameters, palette, seed, subparts, and transforms. Identical inputs and versions must produce the same plan. Rotations transform both coordinates and directional block states. Unsupported transforms are rejected.
 
-**Snapshot:** ID, мир и epoch, маска, канонические состояния блоков, ревизии секций и хеши. Снимок, собранный за несколько тиков, не объявляется глобально атомарным: изменившиеся во время сборки секции перечитываются или снимок помечается нестабильным.
+**Snapshot:** ID, world and epoch, mask, canonical block states, section revisions, and hashes. A snapshot assembled over several ticks is not declared globally atomic: sections that change during collection are reread, or the snapshot is marked unstable.
 
-**Plan:** неизменяемый ID и хеш содержимого, инициатор, область, базовый снимок, read set зависимостей, write set с `expected/desired`, группы взаимосвязанных блоков, срок действия и статистика. Read set включает опоры и свободные проходы, если от них зависит решение. План хранится на сервере; модели возвращается сводка.
+**Plan:** immutable ID and content hash, initiator, region, base snapshot, dependency read set, write set with `expected/desired`, groups of related blocks, expiry, and statistics. The read set includes supports and clear passages when the decision depends on them. The plan is stored on the server; the model receives a summary.
 
-**Operation:** ID, idempotency key, plan ID, состояние, номера порций, число подтверждённых записей, конфликты, автор, временные метки и связь с операцией отмены. Точное исходное и полученное содержимое хранится в постоянном журнале.
+**Operation:** ID, idempotency key, plan ID, status, slice numbers, count of confirmed writes, conflicts, author, timestamps, and a link to the undo operation. Exact original and resulting contents are stored in the persistent journal.
 
-**Camera:** имя, мир, позиция, yaw/pitch, FOV, разрешение, профиль отображения. **Capture:** ID изображения, camera ID, время, связанная операция, сведения о загрузке и статус свежести. Снимок относится к моменту наблюдения, а не является атомарным изображением состояния всего сервера.
+**Camera:** name, world, position, yaw/pitch, FOV, resolution, and display profile. **Capture:** image ID, camera ID, time, associated operation, loading information, and freshness status. A capture corresponds to an observation time; it is not an atomic image of the entire server state.
 
-## 9. Строительный язык и рабочий цикл
+## 9. Building language and workflow
 
-В v0.1 агент передаёт JSON-программу: параметры, палитру и последовательность операций `box`, `line`, `cylinder`, `arch`, `repeat`, `transform`, `replace` и `paste`. Это проектируемые примитивы, а не существующие инструменты. Для `replace` обязательны маска области и фильтр исходных состояний.
+In v0.1, the agent submits a JSON program: parameters, a palette, and a sequence of `box`, `line`, `cylinder`, `arch`, `repeat`, `transform`, `replace`, and `paste` operations. These are proposed primitives, not existing tools. `replace` requires a region mask and a filter on source states.
 
-Повторения ограничены счётчиком; разрешены только определённые числовые выражения и ссылки на параметры. Нет `eval`, бесконечных циклов, загрузки модулей, сети и файловых путей. Исполнитель имеет лимиты глубины, операций, памяти, времени и итогового числа блоков. Поддержка произвольного кода в будущем требует отдельного изолированного процесса с ограничениями ОС, а не запрета нескольких строк в скрипте.
+Repetitions have a bounded count; only specified numeric expressions and parameter references are allowed. There is no `eval`, infinite looping, module loading, networking, or file paths. The interpreter has limits on depth, operations, memory, time, and the resulting block count. Future support for arbitrary code requires a separate process with OS-enforced isolation, not merely banning a few strings in a script.
 
-Последовательность работы:
+Workflow:
 
-1. Агент узнаёт возможности сервера, активный проект, участок и ракурсы.
-2. Запрашивает сводку рельефа и существующих частей; при необходимости — локальные блоки и снимок.
-3. Формирует рецепт или точечную правку конкретной части.
-4. Плагин создаёт снимок зависимостей, рассчитывает план и проверяет ограничения без записи в мир.
-5. Агент получает объём, материалы, пересечения и предупреждения о непроверенных свойствах.
-6. Допустимый план применяется порциями. Для обычной разрешённой постройки повторное подтверждение не требуется.
-7. После применения выполняются структурные проверки и снимки выбранных ракурсов.
-8. Исправление создаёт новую операцию. Число самостоятельных повторов ограничено; при отсутствии улучшения агент сообщает, что не удалось решить.
+1. The agent discovers server capabilities, the active project, the region, and viewpoints.
+2. It requests a terrain summary and existing parts; if needed, local blocks and a capture.
+3. It creates a recipe or a targeted edit to a specific part.
+4. The plugin snapshots dependencies, computes a plan, and checks limits without writing to the world.
+5. The agent receives volume, materials, intersections, and warnings about unverified properties.
+6. A permitted plan is applied in slices. An ordinary authorized build does not require repeated approval.
+7. After application, structural checks and captures from selected viewpoints are performed.
+8. A correction creates a new operation. The number of autonomous retries is limited; if there is no improvement, the agent reports what it could not resolve.
 
-Рецепт не является единственным источником текущей геометрии. После ручного изменения агент обязан опираться на актуальный мир. В v0.1 нельзя просто повторно сгенерировать целую часть поверх текущего содержимого.
+The recipe is not the sole source of current geometry. After a manual change, the agent must use the actual world state. v0.1 must not simply regenerate an entire part over its current contents.
 
-Качество постройки задаётся кратким замыслом проекта: назначение, масштаб относительно игрока, силуэт, палитра, основные материалы, входы, внутренние помещения и опорные ракурсы. Для крупной задачи агент сначала делает план объёмов, затем конструкцию, потом детали. Эти этапы остаются отдельными операциями, чтобы удачный силуэт не терялся при неудачной детализации. Пустой интерьер считается допустимым только тогда, когда он соответствует заданию.
+Build quality is guided by a brief project intent: purpose, scale relative to the player, silhouette, palette, primary materials, entrances, interior spaces, and reference viewpoints. For a large task, the agent first plans the major volumes, then builds the structure, then adds details. These stages remain separate operations so that unsuccessful detailing does not destroy a successful silhouette. An empty interior is acceptable only when it matches the brief.
 
-Структурная проверка v0.1 подтверждает заявленные размеры, границы, состояния блоков и фактическое завершение плана. Смысловые свойства вроде удобства навигации, баланса арены и красоты фасада оцениваются отдельно и не выдаются за результат простого сравнения блоков.
+Structural validation in v0.1 confirms declared dimensions, bounds, block states, and actual plan completion. Semantic properties such as navigability, arena balance, and facade aesthetics are assessed separately and are not presented as results of simple block comparison.
 
-## 10. Ручные изменения и конфликты
+## 10. Manual edits and conflicts
 
-Сравнение выполняет серверный код. Модель не получает полный список блоков для самостоятельного вычисления разницы.
+Server code performs the comparison. The model does not receive the full block list to compute the difference itself.
 
-Для обычной записи используются базовое состояние `B`, текущее `C` и желаемое `D`:
+An ordinary write uses base state `B`, current state `C`, and desired state `D`:
 
-- `C = B`: запись `D` допустима, если неизменны зависимости и соблюдены права.
-- `C = D`: блок уже соответствует результату; запись не требуется и не включается в новую историю как наша работа.
-- Иначе: конфликт. Состояние не перезаписывается автоматически.
+- `C = B`: writing `D` is allowed if dependencies are unchanged and permissions are satisfied.
+- `C = D`: the block already matches the result; no write is needed, and it is not recorded in the new history as our work.
+- Otherwise: a conflict. The state is not overwritten automatically.
 
-В v0.1 при обнаружении ручного расхождения внутри перестраиваемой части автоматическая повторная генерация этой части останавливается. Агент может подготовить локальный план, который явно сохраняет текущую геометрию, либо строить другую, незатронутую часть.
+In v0.1, detecting a manual divergence inside a part being rebuilt stops automatic regeneration of that part. The agent may prepare a local plan that explicitly preserves current geometry, or build a different, unaffected part.
 
-Для v0.2 предлагается трёхстороннее объединение: сравниваются предыдущий сгенерированный результат `G0`, текущий мир `C` и новый результат `G1`. Если `G1 = G0`, ручная правка сохраняется; если `C = G0`, можно принять новую геометрию; если `C = G1`, запись не нужна; остальные пересечения требуют решения. Это объединение по координатам, а не понимание смысла окна или лестницы.
+A three-way merge is proposed for v0.2: compare the previous generated result `G0`, the current world `C`, and the new result `G1`. If `G1 = G0`, preserve the manual edit; if `C = G0`, the new geometry may be accepted; if `C = G1`, no write is needed; other overlaps require a decision. This is a coordinate-based merge, not an understanding of what a window or staircase means.
 
-Пример: ручное окно в неизменяемой стене сохраняется при добавлении верхних этажей. Если новый этаж сдвигает всю стену, система не знает автоматически, куда перенести окно. В v0.1 такая перестройка останавливается и предлагается локальный новый план. Автоматическое перенесение поправок в координатах рецепта относится к следующей версии.
+Example: a manually added window in an unchanged wall is preserved when upper floors are added. If a new floor shifts the entire wall, the system does not automatically know where to move the window. In v0.1, such rebuilding stops and a new local plan is proposed. Automatic transfer of edits in recipe coordinates belongs to the next version.
 
-При заранее найденном конфликте план не начинает запись. Если конфликт возник во время выполнения, операция останавливается перед следующей затронутой группой и возвращает частичный результат. Она не продолжает молча строить остальные фрагменты: это может оставить конструкцию геометрически неверной.
+If a conflict is found in advance, the plan does not begin writing. If a conflict arises during execution, the operation stops before the next affected group and returns a partial result. It does not silently continue building the remaining fragments, since this could leave the structure geometrically incorrect.
 
-Варианты разрешения: сохранить текущий мир и перепланировать; исключить защищённую часть; по явному решению владельца заменить конкретный конфликтующий фрагмент. Новый выбор создаёт новый план от свежего состояния. Глобального режима «игнорировать все конфликты» в инструментах агента нет.
+Resolution options are: preserve the current world and replan; exclude a protected part; or, following an explicit owner decision, replace a specific conflicting fragment. A new decision creates a new plan from fresh state. The agent's tools do not offer a global “ignore all conflicts” mode.
 
-События игроков, природных изменений и интеграция WorldEdit ускоряют обновление ревизий. Однако не все сторонние плагины обязаны вызывать одинаковые события. Поэтому хеши и ревизии служат ускорением, а проверка живых блоков непосредственно перед записью остаётся обязательной. Неизвестный источник изменения называется «внешнее изменение», а не приписывается игроку.
+Player events, natural-change events, and WorldEdit integration speed up revision updates. However, third-party plugins are not all required to emit the same events. Hashes and revisions therefore serve as optimizations, while live block checks immediately before writing remain mandatory. An unknown source is described as an “external change,” not attributed to a player.
 
-Серверная проверка защищает текущее содержимое. Если неподконтрольный плагин изменил блок и вернул его обратно между проверками, одно сравнение содержимого не восстановит эту историю. Полная авторская история всех возможных изменений мира не обещается.
+Server validation protects current content. If an uncontrolled plugin changes a block and changes it back between checks, content comparison alone cannot reconstruct that history. A complete authorship history of every possible world change is not promised.
 
-## 11. Применение, остановка и восстановление
+## 11. Application, stopping, and recovery
 
-Состояния операции: `prepared` → `queued` → `applying` → `applied`. Ветви завершения: `conflict`, `cancelled`, `failed`, `recovery_required`. Каждое состояние сопровождается количеством реально подтверждённых блоков: даже `cancelled` может означать частично изменённый мир. Визуальная проверка имеет отдельный статус `pending/passed/needs_changes/unavailable`; снимок не определяет завершённость записи.
+Operation states: `prepared` → `queued` → `applying` → `applied`. Other terminal branches: `conflict`, `cancelled`, `failed`, `recovery_required`. Every state includes the count of actually confirmed blocks: even `cancelled` can mean a partially modified world. Visual validation has a separate `pending/passed/needs_changes/unavailable` status; a capture does not determine whether writing has finished.
 
-Подготовка геометрии, сжатие, работа с файлами, сеть и запросы к модели выполняются вне игрового потока. Чтение и изменение живого мира выполняются через допустимые серверные API в серверном потоке. Такой подход соответствует ограничениям [Paper Scheduler](https://docs.papermc.io/paper/dev/scheduler/).
+Geometry preparation, compression, file operations, networking, and model requests run outside the game thread. Live world reads and writes use supported server APIs on the server thread. This follows the restrictions of the [Paper Scheduler](https://docs.papermc.io/paper/dev/scheduler/).
 
-Алгоритм порции:
+Slice algorithm:
 
-1. Сформировать ограниченную группу изменений и зависимости от её окружения. Общий диспетчер плагина сериализует пересекающиеся операции по UUID мира и области, в том числе между разными проектами. Блокировка одного проекта не считается достаточной защитой.
-2. В серверном потоке прочитать фактическое исходное состояние и подготовить запись намерения с `before/after`, ID группы и контрольной суммой.
-3. Сохранить намерение в постоянный журнал вне серверного потока и дождаться подтверждения сохранения. До этого мир не меняется.
-4. Вернуться в серверный поток; повторно проверить полномочия, epoch, ограничения, ожидаемые состояния и зависимости. При изменениях остановиться до записи этой группы.
-5. В том же серверном шаге без уступки управления применить допустимую небольшую группу, проверить результат и зарегистрировать фактически изменённые блоки. Запись намерения со статусом пропуска или ошибки также сохраняется.
-6. Зафиксировать завершение группы и только затем продолжить следующую. Обновить сводку операции и инвалидировать затронутые кэши.
+1. Form a bounded group of changes and dependencies on its surroundings. A plugin-wide dispatcher serializes overlapping operations by world UUID and region, including across different projects. A lock on a single project is not sufficient protection.
+2. On the server thread, read the actual initial state and prepare an intent record with `before/after`, a group ID, and a checksum.
+3. Save the intent to the persistent journal off the server thread and wait for persistence acknowledgement. The world does not change before this.
+4. Return to the server thread; recheck permissions, epoch, limits, expected states, and dependencies. If anything changed, stop before writing this group.
+5. In the same server step, without yielding control, apply a permitted small group, verify the result, and record blocks actually changed. Intent records with skipped or error outcomes are also persisted.
+6. Commit group completion before continuing to the next group. Update the operation summary and invalidate affected caches.
 
-План должен объявлять зависимости. Если часть зависит от ранее обработанных блоков, последующие проверки учитывают уже подтверждённые значения самой операции. Изменение важной опоры после её обработки приостанавливает дальнейшие зависимые шаги. Полная согласованность всего здания на протяжении многих тиков без блокировки всех внешних писателей не гарантируется; после записи нужна итоговая проверка.
+A plan must declare dependencies. If a part depends on blocks processed earlier, subsequent checks account for the operation's own confirmed values. A change to an important support after it was processed pauses subsequent dependent steps. Full consistency of the entire building across many ticks is not guaranteed without locking out all external writers; a final check is required after writing.
 
-Обычная ручная правка не вклинивается между проверкой и записью одной серверной порции. Но даже порция не является ACID-транзакцией Minecraft: исключение, вложенные события или физика могут дать частичное изменение. Исполнитель записывает фактический результат, а операция останавливается. Для составных объектов задаются маленькие неделимые логические группы и отдельные правила проверки. Поддержка таких групп не означает атомарности при падении процесса.
+An ordinary manual edit cannot interleave between validation and writing within one server slice. Even a slice, however, is not a Minecraft ACID transaction: an exception, nested events, or physics may cause partial changes. The executor records the actual result, and the operation stops. Multipart objects use small indivisible logical groups and separate validation rules. Support for these groups does not imply atomicity if the process crashes.
 
-`/ai stop` имеет два независимых действия: ACP-отмена хода модели и серверный флаг отмены операции. Остановка модели сама по себе не отменяет уже запущенную запись. Плагин проверяет флаг перед каждой порцией; выполненные изменения остаются в истории. Потеря Bridge запрещает запуск новых порций после короткого таймаута соединения; выполненная порция не повторяется вслепую.
+`/ai stop` has two independent effects: ACP cancellation of the model turn and a server-side operation cancellation flag. Stopping the model alone does not cancel an already running write. The plugin checks the flag before each slice; completed changes remain in history. Losing the Bridge prevents new slices after a short connection timeout; a completed slice is not replayed blindly.
 
-Все изменяющие запросы имеют idempotency key, связанный с проектом и хешем содержимого. Повтор с тем же ключом и тем же планом возвращает существующую операцию; тот же ключ с другим содержимым отклоняется. Повтор после сетевого таймаута начинается с запроса состояния операции.
+All mutating requests have an idempotency key bound to the project and content hash. A retry with the same key and plan returns the existing operation; the same key with different content is rejected. Retrying after a network timeout starts with an operation-status request.
 
-После сбоя плагин обнаруживает незавершённые группы и переходит в `recovery_required`. Сохранение файлов мира и журнала не является одной общей транзакцией. Поэтому при запуске выполняется сверка живого мира с `before/after`: старое значение, новое значение либо постороннее состояние. Ни неизвестное состояние, ни неоднозначная история не перезаписываются автоматически. Возобновление или отмена строятся как новый проверенный план; запись блоков по одному лишь последнему статусу журнала запрещена.
+After a crash, the plugin detects unfinished groups and enters `recovery_required`. World-file persistence and journal persistence do not form a single shared transaction. Startup therefore compares the live world with `before/after`: the old value, the new value, or an unrelated state. Neither unknown states nor ambiguous history are overwritten automatically. Resumption or undo is constructed as a new validated plan; writing blocks based solely on the journal's last status is prohibited.
 
-Отмена создаёт обратную операцию только для фактически записанных нами блоков. Она возвращает `before`, если текущее состояние совпадает с подтверждённым `after` и нет известной более поздней записи другого действия. Для известного последующего изменения возвращается конфликт, даже если итоговое значение случайно совпало. Для неизвестных внешних действий остаётся ограничение проверки по содержимому из раздела 10.
+Undo creates a reverse operation only for blocks we actually wrote. It restores `before` if the current state matches the confirmed `after` and there is no known later write by another action. A known subsequent change produces a conflict even if its final value happens to match. Unknown external actions remain subject to the content-check limitation in section 10.
 
-Производные эффекты — течение воды, падение песка, изменения инвентарей, рост растений, обновления редстоуна — не восстанавливаются простым обратным списком блоков. В v0.1 такие сценарии исключены из гарантируемой строительной области. Журнал не заменяет резервную копию мира. Поддержка полноценной симуляции побочных эффектов потребует отдельного дизайна.
+Secondary effects — flowing water, falling sand, inventory changes, plant growth, and redstone updates — cannot be restored with a simple reverse block list. v0.1 excludes these scenarios from the guaranteed building area. The journal does not replace a world backup. Full simulation of side effects requires a separate design.
 
-Проверка учитывает поддерживаемое окружение, а не только заменяемые блоки: удаление камня под песком или рядом с водой тоже может запустить побочный эффект. Для первой версии используется контролируемая строительная область; обнаруженное неподдерживаемое окружение останавливает подготовку. Абсолютная изоляция от произвольных плагинов и физики соседнего мира не обещается.
+Validation considers supported surroundings, not just replaced blocks: removing stone beneath sand or beside water can also trigger side effects. The first version uses a controlled building area; detected unsupported surroundings stop preparation. Absolute isolation from arbitrary plugins and neighboring-world physics is not promised.
 
-## 12. Экономия контекста
+## 12. Context economy
 
-Модель получает сведения, необходимые для решения. Полные снимки, списки блоков, история и вычисление разницы находятся на стороне системы. Неизменённые данные не отправляются заново без причины.
+The model receives the information needed for its decision. Full snapshots, block lists, history, and difference computation remain on the system side. Unchanged data is not resent without a reason.
 
-Уровни чтения:
+Read levels:
 
-1. Сводка проекта: назначение карты, палитра, области, части, активная задача, ограничения и последняя проверка.
-2. Сводка участка: высоты поверхности с заданным шагом, материалы, занятые объёмы и ссылки на части. Неизвестные свойства отмечаются явно. Система не обещает автоматически распознавать здания в произвольном старом мире.
-3. Изменения с курсора: количество блоков, затронутые части и ограничивающие объёмы; подробности доступны страницами.
-4. Небольшой точный фрагмент: палитра состояний и сжатое представление координат либо срез. Распаковка миллионов блоков в текст не допускается.
-5. Изображение нужного ракурса: сначала общий вид, затем детали проблемного участка.
+1. Project summary: map purpose, palette, regions, parts, active task, constraints, and latest validation.
+2. Region summary: surface heights at a specified sampling interval, materials, occupied volumes, and part references. Unknown properties are explicitly marked. The system does not promise automatic building recognition in an arbitrary existing world.
+3. Changes since a cursor: block count, affected parts, and bounding volumes; details are paginated.
+4. A small exact fragment: a state palette and compressed coordinates, or a slice. Expanding millions of blocks into text is not allowed.
+5. An image from the required viewpoint: start with an overview, then inspect details of the problem area.
 
-Сводка о правке формируется детерминированно: например, «34 блока изменены, 6 пересекаются с планом». Формулировка «игрок добавил окно» возможна только как вывод модели или подтверждённая метка, а не как достоверный результат простого diff.
+Edit summaries are generated deterministically: for example, “34 blocks changed; 6 intersect the plan.” A statement such as “the player added a window” is valid only as a model inference or a confirmed label, not as an authoritative result of a simple diff.
 
-Курсоры изменений включают world epoch, область, позицию журнала и версию схемы. После очистки журнала, потери наблюдения или замены мира ответ — `resync_required`, а не пустой список изменений. Bridge запрашивает новую локальную сводку. Сторонние изменения, не попавшие в события, ищутся повторной проверкой выбранных секций; дельты не объявляются полным журналом всего сервера.
+Change cursors include the world epoch, region, journal position, and schema version. After journal cleanup, an observation gap, or world replacement, the response is `resync_required`, not an empty change list. The Bridge requests a new local summary. Third-party changes absent from events are sought by rechecking selected sections; deltas are not presented as a complete journal of the entire server.
 
-Обычный ответ инструмента стремится укладываться в 2–4 тысячи токенов; точные ограничения задаются также числом элементов и байтов. При превышении возвращаются счётчик, курсор и признак усечения. Сжатые бинарные блоки и base64-изображения не вставляются в текст: снимок возвращается как изображение MCP, крупные данные остаются артефактами с ID.
+An ordinary tool response targets 2–4 thousand tokens; exact limits also constrain item counts and bytes. If exceeded, the response returns a count, cursor, and truncation flag. Compressed binary blocks and base64 images are not inserted into text: a capture is returned as an MCP image, while large data remains in artifacts referenced by ID.
 
-Начальный бюджет одной визуальной проверки — 2 общих ракурса, при необходимости до 4 дополнительных. Серии кадров не отправляются постоянно. Начальный лимит самостоятельных циклов исправления — 3; это настраиваемая политика, а не ограничение возможностей модели.
+The initial budget for one visual check is 2 overview viewpoints, with up to 4 additional viewpoints if needed. Frame sequences are not sent continuously. The initial limit on autonomous correction cycles is 3; this is a configurable policy, not a limit on the model's capabilities.
 
-Нельзя обещать фиксированную цену задачи: она зависит от модели, тарифа, истории, числа изображений и повторов. Bridge учитывает фактически доступные сведения об использовании и размеры ответов. Процент экономии относительно передачи всего мира нужно измерить на тестовых задачах.
+A fixed task price cannot be promised: it depends on the model, pricing plan, history, image count, and retries. The Bridge records actually available usage information and response sizes. Savings compared with sending the entire world must be measured on test tasks.
 
-## 13. Виртуальные камеры
+## 13. Virtual cameras
 
-Камера — сохранённый ракурс, а не обязательная сущность или блок в мире. Один Camera Worker последовательно обслуживает несколько ракурсов. Одновременные независимые виды не входят в v0.1.
+A camera is a saved viewpoint, not necessarily an entity or block in the world. One Camera Worker serves multiple viewpoints sequentially. Simultaneous independent views are outside v0.1.
 
-Для съёмки клиент наблюдателя перемещается к нужному месту, чтобы сервер прислал соответствующие чанки. Недостаточно сместить только матрицу камеры далеко от игрока: клиент может не иметь данных окружающего мира. Перемещение ограничено разрешёнными областями и измерениями; учётная запись камеры не получает права редактирования.
+For capture, the observer client moves to the required location so the server sends the corresponding chunks. Moving only the camera matrix far from the player is insufficient: the client may not have the surrounding world data. Movement is limited to permitted regions and dimensions; the camera account receives no editing permissions.
 
-Процедура съёмки:
+Capture procedure:
 
-1. Дождаться подтверждения завершения нужной операции на сервере.
-2. Установить мир, позицию, ориентацию, FOV и профиль отображения.
-3. Дождаться клиентской загрузки обязательных чанков и доступных сигналов завершения перестройки геометрии, затем нескольких кадров стабилизации.
-4. Снять кадр без HUD и посторонних интерфейсов, вернуть изображение и метаданные.
-5. Проверить, не менялась ли наблюдаемая область во время съёмки. При обнаруженных изменениях пометить изображение как потенциально устаревшее и предложить повтор.
+1. Wait for confirmation that the required server operation has completed.
+2. Set the world, position, orientation, FOV, and display profile.
+3. Wait for required client chunks to load and for available geometry-rebuild completion signals, followed by several stabilization frames.
+4. Capture a frame without the HUD or unrelated interfaces, and return the image with metadata.
+5. Check whether the observed area changed during capture. If changes are detected, mark the image as potentially stale and suggest a retry.
 
-Подтверждение сервера ещё не означает, что клиент уже отобразил все изменения. Точный критерий готовности рендера нужно проверить прототипом на выбранной версии Fabric. При таймауте возвращается `capture_not_ready`; старый кадр не выдаётся за новый. Проверка ревизий не гарантирует отсутствия неотслеживаемых внешних изменений.
+Server acknowledgement does not mean the client has already displayed all changes. The exact render-readiness criterion must be tested in a prototype on the selected Fabric version. A timeout returns `capture_not_ready`; an old frame is not presented as new. Revision checks do not guarantee the absence of untracked external changes.
 
-Начальный профиль — стандартный ресурспак, без шейдеров, одинаковые FOV и разрешение для сравнения. Время суток и погода фиксируются только явно выбранным режимом проверки; ради красивого скриншота глобальный мир самовольно не меняется. Ракурсы внутри помещений проверяются на попадание камеры в непрозрачный блок.
+The initial profile uses the standard resource pack, no shaders, and consistent FOV and resolution for comparisons. Time of day and weather are fixed only in an explicitly selected validation mode; the global world is not changed without authorization for the sake of a pretty screenshot. Interior viewpoints are checked for the camera being inside an opaque block.
 
-Автоматический обзор предлагает вход, противоположную сторону, диагональ сверху и заданные внутренние точки. Положение рассчитывается по границам части и уточняется по препятствиям. Пользователь может сохранить свои ракурсы. Пиксельное различие снимков не является метрикой красоты: его используют только как вспомогательный сигнал.
+Automatic inspection proposes the entrance, the opposite side, an elevated diagonal view, and specified interior points. Positions are calculated from part bounds and adjusted for obstacles. Users can save their own viewpoints. Pixel differences between captures are not an aesthetic metric; they serve only as an auxiliary signal.
 
-Клиент требует графического рендеринга. Запуск без видимого окна не означает отсутствие GPU/графического контекста и не обещается до проверки. Работа рендера в Fabric меняется между версиями, поэтому мод камеры изолируется от остальных компонентов. [Рендеринг Fabric](https://docs.fabricmc.net/develop/rendering/basic-concepts).
+The client requires graphical rendering. Running without a visible window does not mean no GPU/graphics context is needed, and is not promised before testing. Fabric rendering changes between versions, so the camera mod is isolated from the other components. [Fabric rendering](https://docs.fabricmc.net/develop/rendering/basic-concepts).
 
-## 14. Предлагаемые MCP-инструменты
+## 14. Proposed MCP tools
 
-Ниже — контракт проекта, а не перечень уже реализованных функций. Каталог разделяется на чтение, подготовку и изменение. Полномочия связаны с подключением, проектом и инициатором; передача `project_id` сама по себе не даёт доступа.
+The following is the project's contract, not a list of already implemented functions. The catalog separates reading, preparation, and mutation. Permissions are bound to the connection, project, and initiator; supplying `project_id` alone does not grant access.
 
-- `project_context(project_id)` — возможности, версия мира, область, части, ограничения и состояние операций.
-- `region_inspect(region, detail, cursor?)` — сводка, высотная карта, срез или небольшой набор точных блоков.
-- `region_changes(region, since_cursor, limit)` — дельта, полнота наблюдения и следующий курсор.
-- `part_get(part_id)` — маска, параметры, защита, версия и сведения о внешних изменениях.
-- `part_define(region_or_mask, name, parent_id?)` — зарегистрировать часть без изменения блоков; проверить права и пересечения.
-- `build_prepare(target, recipe_or_patch, base_snapshot_id?, request_id)` — сохранить неизменяемый план; вернуть его ID, хеш, статистику и конфликты.
-- `build_apply(plan_id, plan_hash, idempotency_key)` — проверить разрешение и поставить план в очередь; вернуть operation ID.
-- `operation_status(operation_id, since_cursor?)` — прогресс, частичный результат, ошибки и ссылки на конфликты.
-- `operation_cancel(operation_id, idempotency_key)` — остановить дальнейшее применение.
-- `operation_undo_prepare(operation_id, request_id)` — создать обратный план со свежими проверками; применять через `build_apply`.
-- `camera_list(project_id)` — доступные ракурсы и состояние Camera Worker.
-- `camera_capture(camera_id_or_pose, after_operation_id?, profile)` — изображение с метаданными или ID ожидающего задания.
-- `asset_list(query, cursor?)` — локальные схематики, размеры, палитры, версии и превью.
-- `schematic_export(target, name)` — экспорт в разрешённое хранилище, возвращает artifact ID.
-- `schematic_import_prepare(asset_id, transform, target)` — проверить файл и создать план вставки.
+- `project_context(project_id)` — capabilities, world version, region, parts, limits, and operation status.
+- `region_inspect(region, detail, cursor?)` — a summary, heightmap, slice, or small set of exact blocks.
+- `region_changes(region, since_cursor, limit)` — a delta, observation completeness, and the next cursor.
+- `part_get(part_id)` — mask, parameters, protection, version, and external-change information.
+- `part_define(region_or_mask, name, parent_id?)` — register a part without modifying blocks; check permissions and intersections.
+- `build_prepare(target, recipe_or_patch, base_snapshot_id?, request_id)` — persist an immutable plan; return its ID, hash, statistics, and conflicts.
+- `build_apply(plan_id, plan_hash, idempotency_key)` — check authorization and queue the plan; return an operation ID.
+- `operation_status(operation_id, since_cursor?)` — progress, partial result, errors, and conflict references.
+- `operation_cancel(operation_id, idempotency_key)` — stop further application.
+- `operation_undo_prepare(operation_id, request_id)` — create a reverse plan with fresh checks; apply through `build_apply`.
+- `camera_list(project_id)` — available viewpoints and Camera Worker status.
+- `camera_capture(camera_id_or_pose, after_operation_id?, profile)` — an image with metadata or a pending job ID.
+- `asset_list(query, cursor?)` — local schematics, dimensions, palettes, versions, and previews.
+- `schematic_export(target, name)` — export to permitted storage and return an artifact ID.
+- `schematic_import_prepare(asset_id, transform, target)` — validate the file and create a paste plan.
 
-Создание проекта, расширение разрешённой области, выдача прав и снятие защиты относятся к пользовательскому/административному управлению. Агент не может сам расширить свои полномочия вызовом инструмента.
+Creating projects, expanding permitted areas, granting permissions, and removing protection belong to user/administrator controls. The agent cannot expand its own authority by calling a tool.
 
-Общий ответ содержит `schema_version`, `request_id`, `status`, идентификатор мира/epoch, краткую сводку, `warnings`, `truncated` и курсор при необходимости. Чтение указывает момент и полноту наблюдения; изменение всегда возвращает operation ID. Большая операция асинхронна и не должна требовать одного MCP-вызова, открытого на всё время строительства.
+The common response contains `schema_version`, `request_id`, `status`, a world identifier/epoch, a brief summary, `warnings`, `truncated`, and a cursor when needed. Reads specify observation time and completeness; mutations always return an operation ID. Large operations are asynchronous and must not require a single MCP call to remain open throughout construction.
 
-Структурированные ошибки: `permission_denied`, `out_of_bounds`, `unsupported_block`, `stale_snapshot`, `conflict`, `budget_exceeded`, `busy`, `resync_required`, `camera_unavailable`, `capture_not_ready`, `version_mismatch`, `recovery_required`. Ошибка указывает возможность повтора; повтор изменяющего запроса соблюдает idempotency.
+Structured errors: `permission_denied`, `out_of_bounds`, `unsupported_block`, `stale_snapshot`, `conflict`, `budget_exceeded`, `busy`, `resync_required`, `camera_unavailable`, `capture_not_ready`, `version_mismatch`, `recovery_required`. Errors indicate whether retry is possible; retries of mutating requests preserve idempotency.
 
-Минимальный протокол между Bridge и плагином версионируется отдельно от MCP/ACP. Каждый запрос содержит correlation ID; команды выполняются от проверенного принципала с ограниченными возможностями, а не от имени произвольного UUID из тела запроса. Ключи и токены не попадают в видимые модели ответы.
+The minimal protocol between the Bridge and plugin is versioned separately from MCP/ACP. Every request contains a correlation ID; commands run as a verified principal with limited capabilities, not as an arbitrary UUID taken from the request body. Keys and tokens do not appear in responses visible to the model.
 
-## 15. Хранение, импорт и перенос
+## 15. Storage, import, and transfer
 
-Планируемая структура репозитория: `bridge/`, `paper-plugin/`, `camera-mod/`, `protocol/`, `fixtures/`, `docs/`. В этом документе она описана как будущая; исходный код ещё не создан.
+Planned repository structure: `bridge/`, `paper-plugin/`, `camera-mod/`, `protocol/`, `fixtures/`, `docs/`. This document describes it as a future structure; source code has not yet been created.
 
-Постоянные данные хранятся вне исходного кода и вне игровых блоков:
+Persistent data is stored outside the source tree and separately from game blocks:
 
-- На сервере: проекты, области, части, планы, журнал, снимки, рецепты, версии схемы и настройки доступа.
-- У Bridge: связь диалогов с проектами, локальная сводка, состояние подключений.
-- У камеры: ракурсы, профили и изображения с ID операций.
-- В библиотеке: `.schem`, превью и метаданные происхождения, версии, размеров, точки привязки и лицензии.
+- On the server: projects, regions, parts, plans, journal, snapshots, recipes, schema versions, and access settings.
+- In the Bridge: conversation-to-project mappings, local summary, and connection state.
+- At the camera: viewpoints, profiles, and images with operation IDs.
+- In the library: `.schem` files, previews, and metadata for provenance, version, dimensions, anchor, and license.
 
-Потеря Bridge не теряет историю блоков. Потеря базы плагина не удаляет постройки, но лишает систему достоверных рецептов и отмены. Отсутствие базы не даёт права повторно проиграть старые планы.
+Losing the Bridge does not lose block history. Losing the plugin database does not delete buildings, but it deprives the system of reliable recipes and undo. A missing database does not authorize replaying old plans.
 
-Очистка журнала сохраняет данные активных операций, восстановления и явно закреплённых контрольных точек. Истёкшая история делает соответствующую отмену недоступной; об этом сообщается прямо. Квота диска проверяется до начала записи, а при невозможности сохранить журнал новые изменения останавливаются. Конкретные сроки хранения выбираются после измерения объёма.
+Journal cleanup preserves data for active operations, recovery, and explicitly pinned checkpoints. Expired history makes the corresponding undo unavailable; this is reported clearly. Disk quota is checked before writing starts, and new changes stop if the journal cannot be saved. Specific retention periods are chosen after measuring storage volume.
 
-Импорт работает с локальным asset ID, не с произвольным путём или URL модели. Проверяются формат, распакованный объём, число блоков, версия, разрешённые состояния и данные block entities/сущностей. Неподдерживаемое содержимое отклоняется с отчётом, а не молча теряется. Схематика сначала превращается в план и проходит тот же путь конфликтов, что обычное строительство. Форматы загрузки и сохранения предоставляет [WorldEdit Clipboard](https://worldedit.enginehub.org/en/latest/usage/clipboard/).
+Import uses a local asset ID, not an arbitrary path or URL supplied by the model. Validation covers format, decompressed size, block count, version, permitted states, and block-entity/entity data. Unsupported content is rejected with a report rather than silently lost. A schematic is first converted into a plan and follows the same conflict-handling path as ordinary construction. Loading and saving formats are provided by [WorldEdit Clipboard](https://worldedit.enginehub.org/en/latest/usage/clipboard/).
 
-Для переноса здания экспортируется `.schem`; для переноса карты сохраняется согласованная резервная копия мира и проверяются измерения и настройки. Метаданные редактора можно приложить отдельным архивом. Перенос на другую серверную основу проверяется на копии и той же версии Minecraft; обратная совместимость со старыми версиями не обещается. Раскладка измерений зависит от серверной основы. [Миграция Paper](https://docs.papermc.io/paper/migration/).
+To transfer a building, export `.schem`; to transfer a map, save a consistent world backup and check dimensions and settings. Editor metadata may be attached as a separate archive. Migration to another server implementation is tested on a copy using the same Minecraft version; backward compatibility with older versions is not promised. Dimension layout depends on the server implementation. [Paper migration](https://docs.papermc.io/paper/migration/).
 
-## 16. Полномочия и эксплуатационные ограничения
+## 16. Permissions and operational limits
 
-Агент получает доступ только к выбранной строительной области и разрешённому набору инструментов. По умолчанию нет серверной консоли, выдачи OP, изменения плагинов, управления аккаунтами, внешней сети и чтения произвольных файлов через Minecraft MCP.
+The agent receives access only to the selected building area and permitted tools. By default, Minecraft MCP provides no server console, OP grants, plugin changes, account management, external networking, or arbitrary file reads.
 
-Codex запускается в отдельном рабочем каталоге с минимальными правами. Его собственные shell/file-инструменты не должны обходить серверные ограничения или читать секреты Bridge. Конкретный механизм изоляции процесса и доступные режимы закреплённого Codex проверяются в первом прототипе. Подключение MCP само по себе не ограничивает остальные инструменты агента.
+Codex runs in a separate working directory with minimal permissions. Its own shell/file tools must not bypass server limits or read Bridge secrets. The specific process-isolation mechanism and available modes of the pinned Codex version are checked in the first prototype. Connecting MCP does not by itself restrict the agent's other tools.
 
-Если Codex/ACP требует разрешение, Bridge связывает запрос с реальным инициатором и показывает конкретное действие. Чужое сообщение в чате не считается разрешением. Отмена и истечение срока закрывают ожидающий запрос. Обычная запись в заранее разрешённой области не должна порождать лишние подтверждения, но это не отменяет ограничения профиля Codex.
+If Codex/ACP requires permission, the Bridge binds the request to the actual initiator and shows the specific action. Another person's chat message is not permission. Cancellation and expiry close a pending request. Ordinary writes inside a preauthorized area should not generate unnecessary confirmations, but this does not override the Codex profile's restrictions.
 
-Текст табличек, названия предметов, импортированные метаданные и чужие сообщения рассматриваются как данные мира. Они не могут менять полномочия, системные инструкции или назначение проекта.
+Sign text, item names, imported metadata, and other people's messages are treated as world data. They cannot change permissions, system instructions, or the project's purpose.
 
-Один серверный план проверяет права и при подготовке, и перед исполнением порций. Отзыв доступа, изменение области или world epoch прекращает дальнейшую запись. При занятости участок ставится в очередь либо возвращает `busy`; скрытой конкуренции между нашими писателями нет.
+A server plan checks permissions both during preparation and before slices execute. Revoking access or changing the region or world epoch stops further writing. A busy region is queued or returns `busy`; there is no hidden concurrency between our writers.
 
-## 17. Первоначальные бюджеты и наблюдаемость
+## 17. Initial budgets and observability
 
-Следующие числа — стартовые настройки прототипа, а не измеренные показатели производительности:
+The following numbers are initial prototype settings, not measured performance figures:
 
-- До 100 000 изменяемых блоков в одном плане; более крупная стройка делится на осмысленные части.
-- До 2 000 000 исследуемых позиций в одной операции подготовки; большая область требует грубого обзора и последующего уточнения.
-- Порция записи — не более 512 блоков и целевой предел 5 мс работы нашего исполнителя на тик. Проверка времени идёт между маленькими логическими группами; одна дорогая операция API может превысить цель.
-- При перегрузке или росте времени тика размер порции уменьшается, новые порции приостанавливаются. Скорость «блоков в секунду» не фиксируется до замеров.
-- Точный текстовый ответ — до 4 096 блоков; страница событий — до 100 элементов; превышение обрабатывается усечением с курсором, а не скрытой потерей данных.
-- Кадр по умолчанию — 1280×720; таймаут готовности 20 секунд; не более одной активной съёмки на Worker.
-- План действует 10 минут, но проверяется перед применением независимо от возраста. По истечении строится новый план.
-- Сигнал остановки принимается сразу; целевой срок прекращения новых порций — до 1 секунды при здоровом сервере и соединении. При зависшем игровом потоке это не гарантия реального времени.
+- Up to 100 000 changed blocks in one plan; larger builds are divided into meaningful parts.
+- Up to 2 000 000 inspected positions in one preparation operation; larger regions require a coarse overview followed by refinement.
+- A write slice contains at most 512 blocks, with a target of 5 ms of executor work per tick. Time is checked between small logical groups; a single expensive API operation may exceed the target.
+- Under overload or increasing tick time, slice size is reduced and new slices are paused. A blocks-per-second rate is not fixed before measurement.
+- Exact textual responses contain up to 4 096 blocks; event pages up to 100 entries. Excess data is handled through truncation with a cursor, not silent loss.
+- Default frame size is 1280×720; readiness timeout is 20 seconds; at most one active capture per Worker.
+- A plan expires after 10 minutes, but is checked before application regardless of age. A new plan is created after expiry.
+- A stop signal is accepted immediately; the target for stopping new slices is within 1 second with a healthy server and connection. This is not a real-time guarantee when the game thread is hung.
 
-Измеряются длительности подготовки и порций, время тика с задачей и без неё, объём журнала, размер ответов модели, число снимков и повторов, конфликты, отставание камеры и время остановки. Корреляция строится по project/request/operation/capture ID.
+Measurements include preparation and slice durations, tick time with and without the task, journal volume, model-response size, capture and retry counts, conflicts, camera lag, and stopping time. Correlation uses project/request/operation/capture IDs.
 
-Токены и стоимость отображаются только по доступным фактическим данным провайдера; отсутствие данных не равно нулю. Не сохраняются скрытые рассуждения модели. Диагностические логи не содержат секретов и по умолчанию не копируют полный игровой чат.
+Tokens and cost are displayed only from actual available provider data; missing data is not zero. Hidden model reasoning is not stored. Diagnostic logs contain no secrets and do not copy the full in-game chat by default.
 
-## 18. Этапы реализации и критерии готовности
+## 18. Implementation stages and readiness criteria
 
-### Этап 0 — проверка совместимости
+### Stage 0 — compatibility validation
 
-Поднять тестовый мир на копии, закрепить версии, проверить ACP-сессию через `codex-acp`, вызов простого MCP-чтения и получение моделью одного изображения. Проверить подключение камеры к Paper, допустимую отдельную сессию наблюдателя и изоляцию Codex.
+Start a test world on a copy, pin versions, and test an ACP session through `codex-acp`, a simple MCP read, and delivery of one image to the model. Check the camera connection to Paper, a permitted separate observer session, and Codex isolation.
 
-Готовность: сообщение из игры доходит до агента; агент получает данные тестового блока и свежий снимок; версии и ограничения записаны. При отсутствии совместимого мода/WorldEdit пересматривается версия платформы до начала строительства реальной карты.
+Ready when: an in-game message reaches the agent; the agent receives test-block data and a fresh capture; versions and limitations are documented. If a compatible mod/WorldEdit is unavailable, reconsider the platform version before starting construction of the real map.
 
-### Этап 1 — безопасная запись без агента
+### Stage 1 — safe writing without an agent
 
-Реализовать области, канонические состояния, подготовку плана, порции, idempotency, журнал, конфликт, отмену и восстановление. Проверять прямым тестовым клиентом: работа базового движка не зависит от качества ответов модели.
+Implement regions, canonical states, plan preparation, slices, idempotency, journal, conflicts, undo, and recovery. Test with a direct test client: the core engine's operation does not depend on the quality of model responses.
 
-Готовность: сервер сохраняет ручную правку между подготовкой и применением; повтор запроса не дублирует работу; отмена не перезаписывает более позднюю правку; остановка и перезапуск дают честное состояние частичного результата.
+Ready when: the server preserves a manual edit made between preparation and application; retrying a request does not duplicate work; undo does not overwrite a later edit; stopping and restarting report the partial result accurately.
 
-### Этап 2 — строительный API и чат
+### Stage 2 — building API and chat
 
-Добавить примитивы, палитры, повторения, части, MCP-инструменты, очередь ACP и компактные сводки. Строительство маленького здания должно требовать геометрической программы, а не списка отдельных вызовов установки блоков.
+Add primitives, palettes, repetition, parts, MCP tools, an ACP queue, and compact summaries. Building a small structure should require a geometry program rather than a list of individual block-placement calls.
 
-Готовность: из чата создаётся башня с именованной крышей; правка крыши оставляет стену и вручную добавленное окно; конфликт лестницы с ручным окном возвращает точное пересечение.
+Ready when: chat creates a tower with a named roof; editing the roof preserves the wall and a manually added window; a conflict between stairs and a manual window returns the exact intersection.
 
-### Этап 3 — визуальный цикл
+### Stage 3 — visual feedback loop
 
-Добавить сохранённые камеры, готовность чанков/рендера, метаданные свежести и связку кадров с операциями. Агент выполняет ограниченное число осмысленных правок по снимкам.
+Add saved cameras, chunk/render readiness, freshness metadata, and capture-to-operation links. The agent makes a bounded number of meaningful corrections based on captures.
 
-Готовность: повторный кадр показывает завершённую правку; незагруженная сцена выдаёт ошибку; пользовательский вид при работе отдельной камеры не переключается. Визуально плохой результат может быть признан плохим, даже если техническая запись успешна.
+Ready when: a subsequent frame shows the completed edit; an unloaded scene returns an error; the user's view does not switch when a separate camera is operating. A visually poor result can be acknowledged as poor even when the technical write succeeds.
 
-### Этап 4 — перенос и выпуск v0.1
+### Stage 4 — transfer and v0.1 release
 
-Добавить `.schem`, локальную библиотеку, копирование проекта и процедуру резервирования. Проверить работу без компонентов редактора на копии мира.
+Add `.schem`, a local library, project copying, and a backup procedure. Test a world copy without the editor components.
 
-Готовность: эталонная постройка проходит экспорт/импорт с совпадением поддерживаемых состояний и ориентаций; неподдерживаемые данные не теряются молча; инструкция запуска воспроизводима на чистом окружении.
+Ready when: a reference build survives export/import with matching supported states and orientations; unsupported data is not silently lost; startup instructions are reproducible in a clean environment.
 
-## 19. Приёмочные сценарии
+## 19. Acceptance scenarios
 
-1. **Ручная правка после подготовки.** Изменить блок из write set перед применением. Ожидается конфликт и сохранение ручного значения.
-2. **Правка между порциями.** Изменить ещё не записанную часть. Ожидается остановка на пересечении и точный отчёт об уже выполненной работе.
-3. **Изменение опоры.** Удалить блок из read set, не входящий в write set. Ожидается перепланирование, а не установка зависящей от него конструкции.
-4. **Отмена после ручного изменения.** Изменить блок после строительства и выполнить undo. Ожидается конфликт для этого блока; нет слепого возврата снимка всей области.
-5. **Повтор запроса.** Повторить `build_apply` после таймаута. Ожидается тот же operation ID и отсутствие повторной записи.
-6. **Падение процесса.** Прерывать сервер до/после сохранения намерения, в середине записи и до отметки завершения. Ожидается `recovery_required`, сверка и отсутствие автоматического уничтожения посторонних состояний.
-7. **Потеря журнала изменений.** Запросить дельту устаревшим курсором. Ожидается `resync_required` и новая сводка.
-8. **Внешний редактор.** Изменить блок через WorldEdit и через путь без ожидаемого события. Ожидается обнаружение реального расхождения перед нашей записью; источник может быть неизвестен.
-9. **Состояния блоков.** Повернуть схему со ступенями, плитами и брёвнами. Ожидаются правильные направления и сохранение состояний после экспорта.
-10. **Неподдерживаемые данные.** Попытаться заменить сундук, вставить сущность или импортировать слишком большой файл. Ожидается отказ до записи.
-11. **Границы и права.** Выдать план за областью, подменить project ID, отозвать доступ во время записи. Ожидается серверный отказ или прекращение следующих порций.
-12. **Камера.** Снимать до загрузки, после изменения и после разрыва связи. Ожидаются достоверные статусы готовности; старое изображение не помечается новым.
-13. **Нагрузка.** Применить 10 000 и 100 000 блоков, записать оборудование, версии, настройки и влияние на время тика. Настроить порции по измерениям.
-14. **Контекст.** Сравнить малый и большой планы одной формы. Объём обычного ответа модели ограничен сводкой; полный diff остаётся на сервере.
-15. **Перенос.** Открыть копию мира без нашего плагина и камеры. Постройка остаётся; потеря функций редактора не меняет блоки.
+1. **Manual edit after preparation.** Change a block in the write set before application. Expect a conflict and preservation of the manual value.
+2. **Edit between slices.** Change a part that has not yet been written. Expect a stop at the intersection and an exact report of completed work.
+3. **Support change.** Remove a block from the read set that is not in the write set. Expect replanning rather than placing a structure that depends on it.
+4. **Undo after a manual edit.** Change a block after construction and perform undo. Expect a conflict for that block, not a blind restoration of the entire region snapshot.
+5. **Request retry.** Repeat `build_apply` after a timeout. Expect the same operation ID and no repeated write.
+6. **Process crash.** Interrupt the server before/after intent persistence, during writing, and before completion is recorded. Expect `recovery_required`, reconciliation, and no automatic destruction of unrelated states.
+7. **Lost change journal.** Request a delta with a stale cursor. Expect `resync_required` and a new summary.
+8. **External editor.** Change a block through WorldEdit and through a path without the expected event. Expect detection of the actual divergence before our write; the source may be unknown.
+9. **Block states.** Rotate a schematic containing stairs, slabs, and logs. Expect correct directions and preservation of states after export.
+10. **Unsupported data.** Attempt to replace a chest, insert an entity, or import an oversized file. Expect rejection before writing.
+11. **Bounds and permissions.** Submit an out-of-region plan, substitute a project ID, or revoke access during writing. Expect server-side rejection or stopping of subsequent slices.
+12. **Camera.** Capture before loading, after a change, and after disconnection. Expect accurate readiness statuses; an old image must not be labeled new.
+13. **Load.** Apply 10 000 and 100 000 blocks, recording hardware, versions, settings, and tick-time impact. Tune slices based on measurements.
+14. **Context.** Compare small and large plans of the same shape. An ordinary response to the model is bounded by the summary; the full diff stays on the server.
+15. **Transfer.** Open a world copy without our plugin and camera. The building remains; losing editor functions does not modify blocks.
 
-Алгоритмы разницы, ограничений, преобразований и idempotency проверяются модульно; потоки, физика, журнал и камера — на настоящем тестовом сервере/клиенте. Моки не доказывают корректность поведения Minecraft. Эти проверки запланированы, но ещё не выполнены.
+Difference, constraint, transformation, and idempotency algorithms are unit-tested; threading, physics, journal, and camera behavior are tested on a real test server/client. Mocks do not prove Minecraft behavior correct. These checks are planned but have not yet been performed.
 
-## 20. Что заимствуем из Blender MCP
+## 20. What we borrow from Blender MCP
 
-Из [Blender MCP](https://github.com/ahujasid/blender-mcp) берём сочетание осмотра сцены, работы с именованными объектами, компактного программного построения, изображений и библиотеки ассетов. В Minecraft это превращается в осмотр региона, маски частей, геометрический язык, камеры и `.schem`.
+From [Blender MCP](https://github.com/ahujasid/blender-mcp), we borrow the combination of scene inspection, named objects, compact programmatic construction, images, and an asset library. In Minecraft, these become region inspection, part masks, a geometry language, cameras, and `.schem`.
 
-Собственные дополнения проекта: согласование с ручными правками, серверные порции, журнал до записи, восстановление после сбоя, курсоры дельт и проверка поддерживаемых состояний. Наличие этих функций у Blender MCP не утверждается. Произвольное выполнение Python и сторонние сервисы генерации 3D не копируются в первую версию.
+The project's own additions are reconciliation with manual edits, server-side slices, a journal persisted before writing, crash recovery, delta cursors, and supported-state validation. We do not claim that Blender MCP provides these features. Arbitrary Python execution and third-party 3D generation services are not copied into the first version.
 
-## 21. Открытые вопросы и последующие версии
+## 21. Open questions and later versions
 
-Вопросы не блокируют завершение этого документа; они определяют работы этапа 0 и решения перед соответствующей функцией:
+These questions do not block completion of this document; they define stage 0 work and decisions required before the relevant feature:
 
-- Какие точные версии WorldEdit и Fabric совместимы с выбранной веткой 26.2? Если нет общей рабочей комбинации, какую поддерживаемую версию выбрать до строительства карты?
-- Где запускается камера и есть ли отдельная игровая сессия для неё? Рабочий вариант — отдельный локальный клиент; запасной — камера в клиенте пользователя.
-- Можно ли получить надёжный сигнал готовности геометрии на выбранной версии клиента? Если нет, какой проверяемый критерий свежести достаточен и какие ограничения показывать?
-- Использовать ли WorldEdit для фактической записи либо только для форматов и выделений? Решение определяется контролем момента записи, побочных эффектов и времени порции.
-- Какие блоки и соседние обновления проходят тесты гарантированной отмены? Расширение списка требует тестов, а не только добавления ID.
-- Какое оборудование и размер проектов считать целевыми? До замеров значения раздела 17 остаются бюджетами прототипа.
+- Which exact WorldEdit and Fabric versions are compatible with the selected 26.2 branch? If there is no working combination, which supported version should be selected before map construction begins?
+- Where does the camera run, and is a separate game session available for it? The working option is a separate local client; the fallback is a camera in the user's client.
+- Can the selected client version provide a reliable geometry-readiness signal? If not, what verifiable freshness criterion is sufficient, and which limitations should be shown?
+- Should WorldEdit perform actual writes or only provide formats and selections? The decision depends on control over write timing, side effects, and slice duration.
+- Which blocks and neighboring updates pass tests for guaranteed undo? Extending the list requires tests, not just adding IDs.
+- What hardware and project sizes should be targeted? Until measurements are available, the values in section 17 remain prototype budgets.
 
-v0.2 может добавить трёхстороннее объединение рецептов с ручными поправками, составные блоки, проверку проходов и маршрутов, библиотеку параметрических деталей и более удобное сравнение ракурсов. Для неизвестных построек возможна ручная регистрация частей, позже — предложенная моделью сегментация с проверкой.
+v0.2 may add three-way merging of recipes with manual edits, multipart blocks, passage and route validation, a library of parametric details, and more convenient viewpoint comparisons. Unknown buildings can support manual part registration, followed later by model-proposed segmentation with validation.
 
-Дальнейшие направления: Fabric-адаптер встроенного сервера для одиночной игры; командное строительство в независимых областях; несколько камер; инструменты проверки мини-игровых карт; изолированные строительные скрипты общего назначения. Они не должны задерживать проверку базового цикла «запрос → план → запись → наблюдение → правка».
+Further directions: a Fabric adapter for the integrated single-player server; collaborative building in independent areas; multiple cameras; minigame-map validation tools; and isolated general-purpose building scripts. These must not delay validation of the basic request → plan → write → observe → edit loop.
 
-## 22. Итоговые критерии проекта
+## 22. Overall project criteria
 
-Успех первой версии означает, что пользователь может построить и уточнить небольшое здание из игрового чата, агент видит результат, ручная правка не затирается молча, отмена имеет честные ограничения, контекст не заполняется полным миром, а карту можно использовать без редактора.
+Success for the first version means that the user can build and refine a small structure through in-game chat, the agent can see the result, manual edits are not silently overwritten, undo has clearly stated limitations, context is not filled with the entire world, and the map can be used without the editor.
 
-Этот документ фиксирует архитектуру и проверяемые требования. Он не подтверждает готовность прототипа, производительность, совместимость всех зависимостей или качество архитектурных решений модели.
+This document records the architecture and testable requirements. It does not establish prototype readiness, performance, compatibility of all dependencies, or the quality of the model's architectural decisions.

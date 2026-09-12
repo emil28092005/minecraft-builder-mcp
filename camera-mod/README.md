@@ -1,61 +1,61 @@
 # Minecraft Builder Camera
 
-Клиентский Fabric-мод для `minecraft-builder-mcp`. Предоставляет настоящий PNG из framebuffer Minecraft через защищённый локальный HTTP-интерфейс. Отрисовка требует запущенного клиента с рабочим графическим окружением. Мод не входит в серверный JAR и не изменяет блоки.
+A client-side Fabric mod for `minecraft-builder-mcp`. It provides real PNG images from Minecraft's framebuffer through an authenticated local HTTP interface. Rendering requires a running client with a working graphics environment. The mod is separate from the server JAR and does not modify blocks.
 
-## Закреплённая платформа
+## Pinned platform
 
 - Minecraft Java Edition **26.2**, Java **25**.
 - Fabric Loader **0.19.5**, Fabric API **0.160.0+26.2**.
-- Fabric Loom **1.17.20**, Gradle Wrapper **9.5.1** (SHA-256 дистрибутива проверяется).
-- JUnit **5.12.2** используется только при сборке тестов.
+- Fabric Loom **1.17.20**, Gradle Wrapper **9.5.1** (distribution SHA-256 is verified).
+- JUnit **5.12.2** is used only to build and run tests.
 
-Версии проверены по [Fabric Maven](https://maven.fabricmc.net/), [Fabric Meta](https://meta.fabricmc.net/v2/versions/loader/26.2) и [официальному примеру 26.2](https://github.com/FabricMC/fabric-example-mod/tree/26.2). Начиная с 26.1 Minecraft не обфусцирован; Yarn и перепривязка имён для этой сборки не нужны. [Инструкция Fabric для 26.2](https://www.fabricmc.net/2026/06/15/262.html).
+Versions were checked against [Fabric Maven](https://maven.fabricmc.net/), [Fabric Meta](https://meta.fabricmc.net/v2/versions/loader/26.2), and the [official 26.2 example](https://github.com/FabricMC/fabric-example-mod/tree/26.2). Since 26.1, Minecraft is unobfuscated; this build needs neither Yarn nor name remapping. [Fabric instructions for 26.2](https://www.fabricmc.net/2026/06/15/262.html).
 
-## Сборка и установка
+## Build and installation
 
 ```bash
 cd camera-mod
 JAVA_HOME=/path/to/jdk-25 ./gradlew build
 ```
 
-Результат: `build/libs/minecraft-builder-camera-0.1.0-SNAPSHOT.jar`. Установить его и закреплённый Fabric API в отдельный профиль Minecraft 26.2 с Fabric Loader. Клиент обычного строителя не требует этого мода.
+Output: `build/libs/minecraft-builder-camera-0.1.0-SNAPSHOT.jar`. Install it and the pinned Fabric API in a separate Minecraft 26.2 profile with Fabric Loader. An ordinary builder's client does not need this mod.
 
-Перед запуском профиля задать окружение процесса:
+Set the process environment before launching the profile:
 
 ```bash
-export MCB_CAMERA_TOKEN='<отдельный секрет длиной не менее 32 символов>'
+export MCB_CAMERA_TOKEN='<separate secret of at least 32 characters>'
 export MCB_CAMERA_PORT=8766
 ```
 
-Тот же секрет указать в конфигурации Paper-плагина для подключения камеры. Paper принимает 32–512 символов из `A–Z`, `a–z`, `0–9`, `.`, `_`, `~`, `-`, без пробелов и переносов; автоматически созданное значение уже подходит. Все три ключа Paper должны различаться. Без `MCB_CAMERA_TOKEN` HTTP-служба отключена. `MCB_CAMERA_PORT` необязателен; допустимы порты 1024–65535. Адрес всегда `127.0.0.1`, переключения на публичный интерфейс нет.
+Set the same secret in the Paper plugin's camera configuration. Paper accepts 32–512 characters from `A–Z`, `a–z`, `0–9`, `.`, `_`, `~`, and `-`, without spaces or line breaks; the automatically generated value already meets these requirements. All three Paper tokens must differ. Without `MCB_CAMERA_TOKEN`, the HTTP service is disabled. `MCB_CAMERA_PORT` is optional; allowed ports are 1024–65535. The address is always `127.0.0.1`, with no option to bind a public interface.
 
-Запустить отдельного наблюдателя, подключиться к нужному Paper-серверу и перевести его в spectator разрешённым серверным способом. Указать UUID наблюдателя в Paper-плагине. Нужна допустимая отдельная игровая сессия, если строитель остаётся на сервере одновременно; мод не обходит вход или ограничения аккаунтов. Держать клиент с закрытыми меню, без слежения за другой сущностью. Свёрнутое окно может прекратить рендеринг и вызвать таймаут.
+Launch a separate observer, connect to the intended Paper server, and switch it to spectator using an authorized server mechanism. Configure the observer's UUID in the Paper plugin. A valid separate game session is required if the builder stays on the server simultaneously; the mod does not bypass authentication or account restrictions. Keep client menus closed and do not spectate another entity. A minimized window may stop rendering and cause a timeout.
 
-### Один клиент через Prism
+### One client through Prism
 
-Для локального теста достаточно одной учётной записи: владелец проекта одновременно служит камерой. Этот вариант проверен на настоящем клиенте Prism с Paper 26.2. В выбранный профиль установить мод и зависимости, подключиться к серверу и привязать владельца через `/ai setup`. В приватном конфиге Paper `camera-player-uuid` должен совпадать с `owner-uuid`. Владелец должен быть онлайн, иметь разрешение `minecraftbuilder.use` и находиться в spectator. Изменения конфигурации применяются после перезапуска плагина/сервера.
+A local test can use one account: the project owner also acts as the camera. This configuration has been tested with a real Prism client and Paper 26.2. Install the mod and dependencies in the selected profile, connect to the server, and register the owner with `/ai setup`. In Paper's private configuration, `camera-player-uuid` must match `owner-uuid`. The owner must be online, have the `minecraftbuilder.use` permission, and be in spectator mode. Configuration changes take effect after restarting the plugin/server.
 
-Чтобы секрет не попадал в аргументы Java и журнал лаунчера, использовать [scripts/camera-wrapper.py](../scripts/camera-wrapper.py) как `WrapperCommand` профиля Prism, например `python3 /path/to/minecraft-builder-mcp/scripts/camera-wrapper.py`. Обёртка читает `camera-token` и `camera-port` из приватного `.runtime/server/plugins/MinecraftBuilderMCP/config.yml` и передаёт их только через окружение дочернего процесса. Другой путь к конфигу задаётся переменной `MCB_CAMERA_PAPER_CONFIG`.
+To keep the secret out of Java arguments and launcher logs, use [scripts/camera-wrapper.py](../scripts/camera-wrapper.py) as the Prism profile's `WrapperCommand`, for example `python3 /path/to/minecraft-builder-mcp/scripts/camera-wrapper.py`. The wrapper reads `camera-token` and `camera-port` from the private `.runtime/server/plugins/MinecraftBuilderMCP/config.yml` and passes them only through the child process environment. Set `MCB_CAMERA_PAPER_CONFIG` to use a different configuration path.
 
-Сохранить ракурс внутри области проекта командой `/ai camera save test`. Затем из корня репозитория запустить:
+Save a viewpoint inside the project region with `/ai camera save test`. Then run from the repository root:
 
 ```bash
 python3 scripts/live-camera-test.py --camera-id test --delay 8
 ```
 
-[scripts/live-camera-test.py](../scripts/live-camera-test.py) проверяет совпадение UUID владельца и камеры, spectator и доступ к Paper. Через восемь секунд он вызывает настоящий `camera_capture` по авторизованному HTTP-маршруту Paper, ждёт PNG и сохраняет исходные байты вместе с очищенными метаданными в `.runtime/camera-test`. Вместо сохранённого ракурса можно передать `--pose X Y Z YAW PITCH`, дополнив его `--fov 85` для общего вида большой постройки (допустимо 30–110°); `--after-operation-id` связывает снимок с завершённой операцией.
+[scripts/live-camera-test.py](../scripts/live-camera-test.py) checks that the owner and camera UUIDs match, spectator mode is active, and Paper is accessible. After eight seconds it calls the real `camera_capture` through Paper's authenticated HTTP route, waits for the PNG, and saves the original bytes with sanitized metadata in `.runtime/camera-test`. Instead of a saved viewpoint, pass `--pose X Y Z YAW PITCH`, optionally adding `--fov 85` for an overview of a large building (allowed range: 30–110°); `--after-operation-id` links the capture to a completed operation.
 
-До начала съёмки вернуться в окно Minecraft, закрыть чат и меню, остановиться и не двигать мышь. Допустимое изменение поворота всего 0.1°, поэтому даже небольшой сдвиг отменяет кадр. Переключение в другое окно может открыть меню паузы. В этом режиме снимок временно использует твой игровой вид; серверная телепортация меняет твою позицию. Режим игры и прежняя позиция автоматически не восстанавливаются. Для возврата к строительству выбрать нужный режим и место вручную.
+Before capture begins, return to Minecraft, close chat and menus, stop moving, and keep the mouse still. Rotation tolerance is only 0.1°, so even slight movement cancels the image. Switching windows may open the pause menu. In this mode, capture temporarily uses your game view; the server teleport changes your position. Your game mode and previous position are not restored automatically. Choose the desired mode and location manually when returning to building.
 
-## Протокол
+## Protocol
 
-Все запросы, включая health и чтение изображения, требуют `Authorization: Bearer <MCB_CAMERA_TOKEN>`. JSON не записывается в лог.
+All requests, including health checks and image retrieval, require `Authorization: Bearer <MCB_CAMERA_TOKEN>`. JSON is not written to the log.
 
-- `GET /health` — кэш состояния последнего клиентского тика: `status`, `connected`, `spectator`, `busy`, `dimension`, `playerId`, `updatedAt`. Старое `updatedAt` означает, что клиент перестал обновляться.
-- `POST /v1/capture` — поставить один снимок в работу. Ответ HTTP 202: `{"status":"pending","captureId":"<uuid>"}`. При занятой камере HTTP 409 и `camera_busy`.
-- `GET /v1/captures/<uuid>` — получить `pending`, `completed` либо `error`. Неизвестный/истёкший ID: HTTP 404. Терминальный `error` имеет `error` и `message`, без изображения.
+- `GET /health` — cached state from the latest client tick: `status`, `connected`, `spectator`, `busy`, `dimension`, `playerId`, and `updatedAt`. A stale `updatedAt` means the client has stopped updating.
+- `POST /v1/capture` — queue one capture. HTTP 202 response: `{"status":"pending","captureId":"<uuid>"}`. A busy camera returns HTTP 409 and `camera_busy`.
+- `GET /v1/captures/<uuid>` — retrieve `pending`, `completed`, or `error`. Unknown/expired IDs return HTTP 404. A terminal `error` contains `error` and `message`, without an image.
 
-Пример тела capture:
+Example capture body:
 
 ```json
 {
@@ -67,34 +67,34 @@ python3 scripts/live-camera-test.py --camera-id test --delay 8
 }
 ```
 
-`x/y/z` — позиция **ног игрока-наблюдателя**, как в Paper teleport. Paper сначала проверяет область/права и телепортирует настроенного наблюдателя; затем вызывает capture. Мод ждёт получения нужной позиции и измерения, но сам не отправляет `/tp` и не подменяет локальную позицию. `dimension` — клиентский ключ измерения, не имя папки и не Bukkit UUID. Дополнительные `world`/`world_id` принимаются как совместимые поля конверта, но не используются как доказательство измерения. `dimension` необязателен в низкоуровневом интерфейсе; серверный маршрут должен передавать его.
+`x/y/z` specify the **observer player's feet position**, as in Paper teleportation. Paper first checks the region and permissions and teleports the configured observer, then calls capture. The mod waits for the requested position and dimension to arrive; it does not send `/tp` or override local position. `dimension` is the client's dimension key, rather than a directory name or Bukkit UUID. Additional `world`/`world_id` fields are accepted for envelope compatibility but are not used to verify the dimension. `dimension` is optional in the low-level interface; the server route should supply it.
 
-Серверный маршрут Paper `camera_capture` передаёт POST, а при наличии `capture_id` опрашивает соответствующий GET. Конкретные названия внешних MCP-инструментов определяет Bridge.
+Paper's `camera_capture` route forwards the POST request and polls the matching GET when `capture_id` is present. The Bridge determines the external MCP tool names.
 
-Результат `completed` содержит `imageBase64`, `mimeType: "image/png"`, `captureId`, `capturedAt`, `dimension`, позицию ног, `eyeY`, фактические yaw/pitch, базовый FOV, размеры исходного framebuffer и изображения, а также метаданные готовности.
+A `completed` result contains `imageBase64`, `mimeType: "image/png"`, `captureId`, `capturedAt`, `dimension`, feet position, `eyeY`, actual yaw/pitch, base FOV, source framebuffer and output image dimensions, and readiness metadata.
 
-`width`/`height` задают максимальные размеры выходного изображения. Снимок вписывается в них с сохранением пропорций и без увеличения; разрешение окна не меняется. Это предотвращает искажение геометрии. Для точных 1280×720 следует использовать framebuffer такого же соотношения сторон и достаточного размера. Базовый FOV ограничен 30–110, ширина 320–1920, высота 180–1080; исходный framebuffer ограничен 16 мегапикселями. Поза требует конечных чисел, yaw -360..360 и pitch -90..90.
+`width`/`height` specify maximum output dimensions. The capture fits within them while preserving aspect ratio and without upscaling; it does not resize the game window. This avoids distorting geometry. For exactly 1280×720, use a sufficiently large framebuffer with the same aspect ratio. Base FOV is limited to 30–110, width to 320–1920, and height to 180–1080; the source framebuffer is limited to 16 megapixels. Pose values must be finite, with yaw in -360..360 and pitch in -90..90.
 
-## Что означает готовность
+## What readiness means
 
-Перед снимком проверяются spectator, совпадение позиции (±0.05 блока), измерения и собственного вида наблюдателя. Мод скрывает HUD, включает первый вид, отключает покачивание и влияние движения на FOV. Затем ждёт:
+Before capture, the mod checks spectator mode, position agreement (±0.05 blocks), dimension, and use of the observer's own view. It hides the HUD, switches to first-person, and disables view bobbing and movement effects on FOV. It then waits for:
 
-1. Девять клиентских чанков вокруг наблюдателя доступны не менее 20 тиков подряд.
-2. В течение трёх кадров камера инициализирована, чанки доступны, очередь подготовки геометрии пуста.
-3. Поза и окно остаются подходящими до чтения framebuffer.
+1. Nine client chunks around the observer to remain available for at least 20 consecutive ticks.
+2. Three frames with an initialized camera, available chunks, and an empty geometry preparation queue.
+3. The pose and window to remain suitable until framebuffer readback.
 
-PNG снимается через `Screenshot.takeScreenshot` после рендера кадра, с GPU readback через Blaze3D; прямого OpenGL-кода нет. Кодирование и уменьшение PNG выполняются отдельным потоком. HUD, FOV, перспектива, покачивание и поворот, сохранённые при начале работы мода с кадром, восстанавливаются на клиентском потоке после завершения или ошибки. Сохранение начинается после получения серверной позиции; это не возврат к положению игрока до телепортации. Позиция после серверной телепортации остаётся серверной.
+PNG capture uses `Screenshot.takeScreenshot` after the frame renders, with GPU readback through Blaze3D and no direct OpenGL code. PNG encoding and downscaling run on a separate thread. The HUD, FOV, perspective, view bobbing, and rotation saved when the mod starts handling the capture are restored on the client thread after success or error. Saving starts after the server position arrives; this does not return the player to the position before teleportation. The server remains authoritative over the post-teleport position.
 
-Это **проверяемая эвристика загрузки**, а не подтверждение конкретной серверной ревизии. Ответ всегда содержит `readiness: "local_chunks_and_render_queue_stable"` и `serverRevisionVerified: false`. Поле `afterOperationId` служит корреляцией; само по себе оно не доказывает, что клиент получил все обновления операции. Нельзя выдавать такой результат за проверку ревизии. Для строгой свежести нужен дополнительный серверный маркер и подтверждение обработки соответствующих пакетов. Дальняя геометрия вне проверенных чанков и изменения после кадра остаются ограничениями.
+This is a **checked loading heuristic**, not confirmation of a specific server revision. The response always contains `readiness: "local_chunks_and_render_queue_stable"` and `serverRevisionVerified: false`. `afterOperationId` is for correlation; by itself it does not prove the client received every update from that operation. Do not present this result as revision verification. Strict freshness requires an additional server marker and acknowledgment that the corresponding packets were processed. Distant geometry outside the checked chunks and changes after capture remain limitations.
 
-Ошибки загрузки, отключение, смена мира/позиции, открытые меню, вмешательство в поворот и неполученный framebuffer возвращают ошибку вместо старого кадра. Таймаут 20 секунд контролируется отдельным потоком даже при зависшем рендере. Следующий снимок разрешается после восстановления состояния на клиентском потоке. Хранятся максимум четыре результата не дольше двух минут; PNG до 8 MiB, тело запроса до 8192 байт. Изображения находятся в памяти и не записываются в общий каталог screenshots.
+Loading failures, disconnection, world/position changes, open menus, rotation interference, and missing framebuffer data return an error instead of a stale image. A separate thread enforces the 20-second timeout even if rendering hangs. Another capture is allowed after state restoration on the client thread. At most four results are retained for up to two minutes; PNGs are limited to 8 MiB and request bodies to 8192 bytes. Images remain in memory and are not written to the shared screenshots directory.
 
-## Проверки и границы прототипа
+## Verification and prototype limits
 
-`./gradlew build` компилирует мод против настоящих зависимостей Minecraft 26.2; тесты проверяют bearer-аутентификацию HTTP, ограничение размера запроса и валидацию параметров. Для них не запускаются клиент или вход в аккаунт.
+`./gradlew build` compiles the mod against real Minecraft 26.2 dependencies; tests cover HTTP bearer authentication, request-size limits, and parameter validation. These tests do not launch the client or sign in to an account.
 
-12 сентября 2026 года выполнен реальный графический тест: один клиент Prism, владелец проекта в spectator, одинаковый UUID владельца и камеры, Paper 26.2 и построенная башня из 575 блоков. Проверены загрузка Mixin, подключение клиента, серверная телепортация, чтение framebuffer и доставка PNG через Paper HTTP. На изображении видна построенная башня без HUD.
+A real graphical test ran on September 12, 2026: one Prism client, the project owner in spectator mode, matching owner and camera UUIDs, Paper 26.2, and a completed 575-block tower. Mixin loading, client connection, server teleportation, framebuffer readback, and PNG delivery through Paper HTTP were verified. The image shows the built tower without the HUD.
 
-Первый запрос завершился `view_changed`: фактический поворот отличался от заданного. Повтор после стабилизации дал PNG **1280×720 за 2.052 секунды**, с yaw **140°**, pitch **31°**, после **20 тиков** и **3 кадров** готовности. Это подтверждённый локальный замер одного запроса, а не гарантия времени для других сцен и компьютеров. Артефакты проверки: `.runtime/camera-test/20260912T192813Z-2b100930.png` и соответствующий JSON; они остаются локальными и не входят в Git.
+The first request ended with `view_changed`: actual rotation differed from the requested rotation. A retry after stabilization produced a **1280×720 PNG in 2.052 seconds**, with yaw **140°**, pitch **31°**, after **20 ticks** and **3 frames** of readiness. This is a verified local measurement of one request, not a timing guarantee for other scenes or computers. Verification artifacts: `.runtime/camera-test/20260912T192813Z-2b100930.png` and its JSON metadata; they remain local and are excluded from Git.
 
-Успешный кадр получен после завершения строительной операции и содержит её `afterOperationId`, но **`serverRevisionVerified` остаётся `false`**: подтверждения обработки конкретной серверной ревизии ещё нет. Отдельно остаются проверки восстановления всех настроек вида, таймаута при свёрнутом окне, отключения посреди снимка, сторонних шейдеров и отдельного аккаунта камеры. Рабочий графический цикл подтверждён для описанного сценария с одним клиентом.
+The successful image was captured after the building operation completed and includes its `afterOperationId`, but **`serverRevisionVerified` remains `false`**: processing of a specific server revision is not yet acknowledged. Remaining checks include restoration of all view settings, timeout with a minimized window, disconnection during capture, third-party shaders, and a separate camera account. The working graphical cycle is verified for the single-client scenario described above.

@@ -1,51 +1,51 @@
 # Bridge
 
-Локальные MCP-инструменты и игровой ACP-клиент для `minecraft-builder-mcp`.
+Local MCP tools and an in-game ACP client for `minecraft-builder-mcp`.
 
-Требуется Node.js 22.22.3+ и работающий Paper-плагин проекта. Установка воспроизводима по `package-lock.json`:
+Requires Node.js 22.22.3+ and the project's running Paper plugin. Installation is reproducible from `package-lock.json`:
 
 ```bash
 npm ci --ignore-scripts
 npm test
 ```
 
-Прямые зависимости закреплены: `codex-acp` 1.11.0, ACP SDK 1.4.0, MCP SDK 1.30.0, Zod 4.6.2, TypeScript 7.0.2. Закреплённая транзитивная версия Codex — 0.153.4. `npm ci` не выбирает свежие версии.
+Direct dependencies are pinned: `codex-acp` 1.11.0, ACP SDK 1.4.0, MCP SDK 1.30.0, Zod 4.6.2, and TypeScript 7.0.2. The transitive Codex version is pinned to 0.153.4. `npm ci` does not select newer versions.
 
-## Запуск
+## Running
 
-Секреты берутся из окружения, а не из аргументов командной строки. Плагин создаёт отдельные административный и агентский токены. Не коммитьте их. Пример конфигурации переменных — `.env.example`; сам bridge не загружает `.env` автоматически.
+Secrets come from environment variables, not command-line arguments. The plugin creates separate administrator and agent tokens. Do not commit them. `.env.example` shows the environment configuration; the bridge does not automatically load `.env`.
 
-- `npm run doctor` проверяет `/health` Paper при наличии `MCB_TOKEN`, создаёт отдельную минимальную конфигурацию Codex и выводит JSON с настройками, ограничениями и точной командой входа.
-- `npm run login` вручную запускает вход через device code в отдельный Codex home; `npm run login -- status` проверяет этот вход.
-- `npm run mcp` запускает MCP по stdio для внешнего агента. Нужны `MCB_AGENT_TOKEN`, `MCB_PLAYER_ID`, `MCB_PROJECT_ID`.
-- `npm run chat` запускает опрос `/ai` и ACP. Нужны `MCB_TOKEN` и `MCB_AGENT_TOKEN`.
-- `node dist/rpc.js project_context` — прямой диагностический RPC с агентской областью доступа.
+- `npm run doctor` checks Paper's `/health` when `MCB_TOKEN` is present, creates a separate minimal Codex configuration, and prints JSON containing settings, limitations, and the exact sign-in command.
+- `npm run login` explicitly starts device-code sign-in in a separate Codex home; `npm run login -- status` checks that sign-in.
+- `npm run mcp` starts MCP over stdio for an external agent. Requires `MCB_AGENT_TOKEN`, `MCB_PLAYER_ID`, and `MCB_PROJECT_ID`.
+- `npm run chat` starts `/ai` polling and ACP. Requires `MCB_TOKEN` and `MCB_AGENT_TOKEN`.
+- `node dist/rpc.js project_context` makes a direct diagnostic RPC with agent scope.
 
-Для локального сервера из этого репозитория удобнее запускать из корня `python3 scripts/bridge.py doctor`, `python3 scripts/bridge.py login`, `python3 scripts/bridge.py status` и затем `python3 scripts/bridge.py chat`. Обёртка использует общую папку `.runtime/bridge-state` и сама читает приватные токены Paper. `status` эквивалентен `login status` или `login --status`; эти команды только проверяют вход и не начинают авторизацию. `doctor`, `login` и `status` можно запускать ещё до создания конфигурации Paper. Не смешивайте вход через эту обёртку с обычным `npm run chat` без соответствующего `MCB_STATE_DIR`: у них разные папки состояния по умолчанию.
+For this repository's local server, run `python3 scripts/bridge.py doctor`, `python3 scripts/bridge.py login`, `python3 scripts/bridge.py status`, and then `python3 scripts/bridge.py chat` from the repository root. The wrapper shares `.runtime/bridge-state` and reads Paper's private tokens itself. `status` is equivalent to `login status` or `login --status`; these commands only check sign-in and do not start authentication. `doctor`, `login`, and `status` can run before the Paper configuration exists. Do not mix sign-in through this wrapper with a plain `npm run chat` without the matching `MCB_STATE_DIR`: their default state directories differ.
 
-`MCB_BACKEND_URL` по умолчанию `http://127.0.0.1:8765`. Разрешён только HTTP на loopback; для удалённого сервера нужен локальный SSH-туннель. UUID игрока/проекта поступают из доверенной конфигурации или ответа Paper, а сервер повторно проверяет владельца и область. В прототипе сервер поддерживает одного настроенного владельца.
+`MCB_BACKEND_URL` defaults to `http://127.0.0.1:8765`. Only loopback HTTP is allowed; a remote server requires a local SSH tunnel. Player/project UUIDs come from trusted configuration or Paper's response, and the server rechecks ownership and scope. The prototype server supports one configured owner.
 
-Игровой мост запускает установленный локальный `codex-acp`, без `npx @latest`. Он использует отдельный Codex home в `.state/chat/codex-home`; вход и настройки обычного `~/.codex` автоматически не копируются. Один раз запустите `npm run login` из той же рабочей директории и с тем же `MCB_STATE_DIR`, что и `chat`. Помощник использует закреплённый Codex CLI с `login --device-auth`; вход начинается только при явном запуске этой команды. Мост сам не открывает браузер и не обращается к модели во время сборки/обычных тестов. Для API-ключа задайте `MCB_OPENAI_API_KEY` или `MCB_CODEX_API_KEY` и `MCB_ACP_AUTH_METHOD=api-key`; общий `OPENAI_API_KEY` из родительского окружения не наследуется.
+The game bridge launches the locally installed `codex-acp`, without `npx @latest`. It uses a separate Codex home at `.state/chat/codex-home`; sign-in and settings from the normal `~/.codex` are not copied automatically. Run `npm run login` once from the same working directory and with the same `MCB_STATE_DIR` used for `chat`. The helper uses the pinned Codex CLI with `login --device-auth`; authentication starts only when this command is explicitly invoked. The bridge does not open a browser itself or contact a model during builds or ordinary tests. For API-key authentication, set `MCB_OPENAI_API_KEY` or `MCB_CODEX_API_KEY` and `MCB_ACP_AUTH_METHOD=api-key`; the parent's generic `OPENAI_API_KEY` is not inherited.
 
-Необязательные настройки:
+Optional settings:
 
-- `MCB_MODEL`: ID модели; применяется через объявленный ACP model selector. Без значения выбирает адаптер.
-- `MCB_ACP_COMMAND`: путь к альтернативному ACP-агенту; без него используется текущий Node и закреплённый `codex-acp`.
-- `MCB_ACP_ARGS`: JSON-массив аргументов, без shell-интерпретации.
-- `MCB_STATE_DIR`: папка состояния, по умолчанию `.state/chat` относительно рабочей директории.
-- `MCB_CODEX_HOME`: явный путь к отдельному Codex home для входа. Если там существует отличающийся `config.toml`, мост откажется запускаться и сохранит файл; используйте отдельную пустую папку, а не обычный профиль Codex.
+- `MCB_MODEL`: model ID, applied through the advertised ACP model selector. If unset, the adapter chooses.
+- `MCB_ACP_COMMAND`: path to an alternative ACP agent. Otherwise, the current Node executable and pinned `codex-acp` are used.
+- `MCB_ACP_ARGS`: JSON array of arguments, with no shell interpretation.
+- `MCB_STATE_DIR`: state directory, defaulting to `.state/chat` relative to the working directory.
+- `MCB_CODEX_HOME`: explicit path to a separate Codex home for sign-in. If a different `config.toml` already exists there, the bridge refuses to start and preserves that file; use a separate empty directory rather than the normal Codex profile.
 
-Дочерний процесс получает только разрешённые переменные окружения, отдельные HOME/XDG/CODEX_HOME и минимальный конфиг. Настройки запрашивают `read-only`, `on-request`, проверку пользователем, запрет сети внутри командного sandbox и отключение shell, приложений, браузера, computer use, hooks, plugins и дополнительных агентов. Источники и параметры приведены в `src/security.ts`. Проверка закреплённого CLI подтвердила отключённый `shell_tool` и перечисленные интеграции; `unified_exec` этот CLI оставляет включённым даже при явном отключении, что отражено в doctor.
+The child process receives only allowlisted environment variables, separate HOME/XDG/CODEX_HOME directories, and a minimal configuration. Settings request `read-only`, `on-request`, user review, no network inside the command sandbox, and disabled shell, apps, browser, computer use, hooks, plugins, and additional agents. Sources and settings are in `src/security.ts`. Inspection of the pinned CLI confirmed that `shell_tool` and the listed integrations were disabled; that CLI keeps `unified_exec` enabled even when explicitly disabled, which doctor reports.
 
-Есть ограничение самого `codex-acp` 1.11.0: его режим `read-only` посылает на каждый ход sandbox `workspace-write` с выключенной сетью, а не буквальный read-only. Поэтому папка конкретной сессии и временные пути могут оставаться доступными для записи. Код не заявляет полной изоляции ОС, и ещё не проверен на настоящем ходе модели. Процессы Bridge/ACP/MCP также остаются доверенными локальными программами; права Paper проверяются отдельно сервером.
+There is a limitation in `codex-acp` 1.11.0 itself: its `read-only` mode sends a `workspace-write` sandbox with networking disabled for every turn, rather than a literal read-only sandbox. As a result, the individual session directory and temporary paths may remain writable. The code does not claim complete OS isolation and has not yet been verified on a real model turn. Bridge/ACP/MCP processes also remain trusted local programs; Paper permissions are checked separately by the server.
 
-Bridge отклоняет дополнительные запросы разрешений с сообщением в игре. Интерактивное подтверждение разрешений через Minecraft пока не реализовано. ACP capabilities для файлов и терминала не объявляются. Административный токен Paper не передаётся дочернему агенту; MCP получает отдельный ограниченный агентский токен. Конфигурацию нужно проверять через doctor после смены версий или при наличии системных политик Codex. Для динамически передаваемого Minecraft MCP override `default_tools_approval_mode` не устанавливается: закреплённый адаптер передаёт только command/args/env и заменяет соответствующую таблицу конфигурации. Поэтому поведение разрешений MCP остаётся проверкой первого настоящего хода после входа пользователя; сборка и initialize не подтверждают, что строительство через модель уже работает.
+The Bridge denies additional permission requests and reports this in the game. Interactive permission approval through Minecraft is not implemented. It does not advertise ACP file or terminal capabilities. Paper's administrator token is not passed to the child agent; MCP receives a separate restricted agent token. Check configuration with doctor after version changes or when system-wide Codex policies are present. The dynamically supplied Minecraft MCP override does not set `default_tools_approval_mode`: the pinned adapter passes only command/args/env and replaces the corresponding configuration table. MCP permission behavior therefore remains a check for the first real turn after user sign-in; a successful build and initialize do not prove that model-driven building already works.
 
 ## MCP
 
-Инструменты: `project_context`, `region_inspect`, `build_prepare`, `build_apply`, `operation_status`, `operation_cancel`, `operation_undo_prepare`, `part_get`, `part_define`, `camera_list`, `camera_capture`, `asset_list`, `schematic_export`, `schematic_import_prepare`.
+Tools: `project_context`, `region_inspect`, `build_prepare`, `build_apply`, `operation_status`, `operation_cancel`, `operation_undo_prepare`, `part_get`, `part_define`, `camera_list`, `camera_capture`, `asset_list`, `schematic_export`, `schematic_import_prepare`.
 
-Рецепт первой версии:
+Version 1 recipe:
 
 ```json
 {
@@ -59,30 +59,30 @@ Bridge отклоняет дополнительные запросы разре
 }
 ```
 
-Необязательный `part_id` в `build_prepare` ограничивает запись точной маской зарегистрированной части; расширение задаётся отдельной частью.
+An optional `part_id` in `build_prepare` restricts writes to the exact mask of a registered part; extensions use a separate part.
 
-Инструменты отсылают данные на Paper для финальной проверки и вычисления. Мост не хранит блоки и не пишет мир. MCP принимает один уровень `repeat`; глубоко вложенные повторения, произвольный код, арки и общие трансформации пока не объявлены. Поддерживаемые состояния блоков и лимиты берутся из `project_context`.
+Tools send data to Paper for final validation and computation. The bridge does not store blocks or write to the world. MCP accepts one level of `repeat`; deeply nested repeats, arbitrary code, arches, and general transforms are not advertised yet. Supported block states and limits come from `project_context`.
 
-`build_prepare` возвращает `plan_id` и `plan_hash`. Для `build_apply` нужно передать их вместе со стабильным `idempotency_key`. При таймауте запись могла уже начаться: сначала проверьте `operation_status` и используйте тот же ключ. Мост не повторяет запись автоматически.
+`build_prepare` returns `plan_id` and `plan_hash`. Pass both to `build_apply` with a stable `idempotency_key`. After a timeout, writing may already have started: check `operation_status` first and reuse the same key. The bridge does not automatically retry writes.
 
-Локальная библиотека `.schem` поддерживает до 64 файлов, Sponge v2, плотные области до 4096 блоков и повороты 0/90/180/270°. Файлы вручную помещаются в папку `schematics` внутри данных Paper-плагина. `asset_list` возвращает метаданные без выдуманных превью; `schematic_export` сохраняет регион и возвращает ID; `schematic_import_prepare` создаёт обычный проверяемый план, который затем применяется через `build_apply`. Пути, сущности, block entities и неподдерживаемые блоки не принимаются.
+The local `.schem` library supports up to 64 files, Sponge v2, dense regions of at most 4096 blocks, and rotations of 0/90/180/270°. Place files manually in the `schematics` directory inside the Paper plugin's data directory. `asset_list` returns metadata without invented previews; `schematic_export` saves a region and returns its ID; `schematic_import_prepare` creates a normal checked plan that is then applied through `build_apply`. Paths, entities, block entities, and unsupported blocks are rejected. The strict codec currently supports the original 61-material subset; the ten newer decorative materials in the building palette are not yet supported by `.schem`.
 
-`camera_capture` возвращает `pending` и `captureId`; запрос с `capture_id` читает результат. Только `completed` с настоящим изображением превращается в MCP `ImageContent`. Если камеры нет или снимок не готов, изображение не выдумывается. Обычный текстовый ответ ограничен 64 KiB; чтение слишком большой области завершается ошибкой с просьбой уменьшить область. HTTP ограничен по времени, входному объёму и размеру потокового ответа.
+`camera_capture` returns `pending` and `captureId`; a request with `capture_id` reads the result. Only `completed` with a real image becomes MCP `ImageContent`. If the camera is absent or the capture is not ready, no image is fabricated. Ordinary text responses are limited to 64 KiB; reading an oversized region fails with a request to reduce its size. HTTP has time, input-size, and streaming response-size limits.
 
-## Диалоги и остановка
+## Conversations and cancellation
 
-Один активный ход на проект, до восьми сообщений в очереди. Разные проекты могут обрабатываться независимо. Сессии и папки разделены по проекту и UUID игрока. Ответы отправляются только инициатору через `chat_reply`; общий игровой чат, мысли модели, tool-аргументы и stderr адаптера не транслируются.
+One active turn per project, with up to eight queued messages. Different projects can run independently. Sessions and directories are separated by project and player UUID. Replies go only to the initiating player through `chat_reply`; public game chat, model reasoning, tool arguments, and adapter stderr are not broadcast.
 
-Каждый запрос включает переданные сервером позицию игрока, направление взгляда и целевой блок, если они доступны. Вывод сообщений ограничен до четырёх сообщений в секунду для одного игрока.
+Each request includes the player position, viewing direction, and targeted block supplied by the server, when available. Message output is limited to four messages per second per player.
 
-ID ACP-сессии и последняя компактная сводка сохраняются атомарной заменой `session.json` с правами `0600`. После перезапуска мост пробует `session/load`; при отказе начинает новый диалог со сводкой и явно сообщает об этом. Повтор истории при загрузке не выводится в чат. Незавершённый предыдущий ход помечается отдельно; уже начатые операции необходимо сверить на Paper. Сводка хранит последнее задание и итог, она не заменяет `project_context`.
+The ACP session ID and latest compact summary are persisted by atomically replacing `session.json` with permissions `0600`. After restarting, the bridge tries `session/load`; if that fails, it starts a new conversation with the summary and explicitly reports the fallback. Replayed history is not shown in chat. An unfinished previous turn is marked separately; operations already started must be checked on Paper. The summary stores the latest request and outcome and does not replace `project_context`.
 
-`/ai stop` должен одновременно установить серверный флаг остановки записи и доставить мосту событие `type:"cancel"`. ACP отменяет генерацию; уже изменённые блоки остаются в журнале. Прерванный агент, не отвечающий на cancel пять секунд, завершается. При каждом запуске мост создаёт `client_id` и передаёт его в `chat_poll`. Смена ID позволяет Paper остановить активные записи и завершить оставшиеся арендованные запросы с уведомлением пользователя; такие задания автоматически не повторяются. Очередь входящих сообщений Paper пока хранится в памяти. После `/ai stop` сервер удерживает запись на паузе до нового задания владельца или `/ai resume`.
+`/ai stop` must both set the server's write-stop flag and deliver a `type:"cancel"` event to the bridge. ACP cancels generation; blocks already changed remain in the journal. An interrupted agent that does not respond to cancellation within five seconds is terminated. On each launch, the bridge creates a `client_id` and passes it to `chat_poll`. A changed ID lets Paper stop active writes and finish outstanding leased requests while notifying the user; those requests are not replayed automatically. Paper's incoming message queue is currently in memory. After `/ai stop`, the server keeps writing paused until a new owner request or `/ai resume`.
 
-## Проверки
+## Verification
 
-`npm test` выполняет HTTP-тесты и настоящий stdio MCP handshake, а также использует отдельный mock ACP-процесс для проверки сессий, резюме, скрытия истории, отказа разрешений и отмены. Проверки очередей подтверждают сериализацию внутри проекта и независимость других проектов. Реальный закреплённый `codex-acp` также прошёл бесплатный `initialize`: ACP v1, `loadSession: true`, методы входа `api-key` и `chat-gpt` до ограничения окружения. Повторная проверка в отдельном home также успешна; при `NO_BROWSER=1` адаптер объявляет только `api-key`, а ChatGPT-вход выполняется отдельным helper `login`. Это не доказывает вход ChatGPT, качество модели или поведение Minecraft: для этого требуется запуск всей системы на настоящем сервере/клиенте.
+`npm test` runs HTTP tests and a real stdio MCP handshake, and uses a separate mock ACP process to test sessions, summaries, history suppression, permission denial, and cancellation. Queue tests verify serialization within a project and independence between projects. The real pinned `codex-acp` also passed a free `initialize`: ACP v1, `loadSession: true`, and authentication methods `api-key` and `chat-gpt` before environment restrictions. A repeat check in a separate home also passed; with `NO_BROWSER=1`, the adapter advertises only `api-key`, while ChatGPT sign-in uses the separate `login` helper. This does not prove ChatGPT authentication, model quality, or Minecraft behavior: those require the complete system running against a real server/client.
 
-Опциональный `node test/live-paper.mjs` запускается только против отдельного настоящего тестового Paper: проверяет полый куб, повторное применение с тем же ключом, экспорт `.schem`, библиотеку ассетов, отмену, импорт в тот же anchor, вторую отмену до 27 блоков воздуха, границы и честный ответ недоступной камеры. Он оставляет экспортированный тестовый asset в локальной библиотеке. Это изменяющая мир проверка, она не входит в обычный `npm test`.
+The optional `node test/live-paper.mjs` runs only against a separate real test Paper server: it checks a hollow cube, applying again with the same key, `.schem` export, the asset library, undo, import at the same anchor, a second undo back to 27 air blocks, bounds, and a truthful unavailable-camera response. It leaves the exported test asset in the local library. This test changes the world and is not part of ordinary `npm test`.
 
-Исходные API сверены с [ACP SDK](https://github.com/agentclientprotocol/typescript-sdk), [codex-acp](https://github.com/agentclientprotocol/codex-acp), [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) [справочником конфигурации Codex](https://learn.chatgpt.com/docs/config-file/config-reference) и [документацией MCP Codex](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+The original APIs were checked against the [ACP SDK](https://github.com/agentclientprotocol/typescript-sdk), [codex-acp](https://github.com/agentclientprotocol/codex-acp), [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk), [Codex configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference), and [Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
