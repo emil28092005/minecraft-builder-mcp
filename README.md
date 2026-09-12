@@ -2,11 +2,11 @@
 
 A Minecraft building editor for collaboration between a human and an AI agent.
 
+![Daylight screenshot of the Gothic hall built and inspected in Minecraft](docs/builds/gothic-hall-polished-day.png)
+
+An unedited in-game capture of our Gothic hall: 30,125 blocks and 53 lanterns. See the [build report](docs/builds/GOTHIC_HALL.md) for the reference, checked incremental edits, and dusk and interior photos.
+
 Working prototype: a Paper plugin, an editing core, an MCP/ACP Bridge, and a Fabric camera mod. Building, conflicts, undo, crash recovery, and `.schem` have been tested against local Paper through HTTP and real MCP stdio. The camera has been tested in Prism with one client: a real 1280×720 PNG was delivered through MCP. Signing in to the separate Codex profile and completing the first model turn through ACP still need verification.
-
-![Reference-based Gothic hall built and inspected in Minecraft](docs/builds/gothic-hall-polished-evening.png)
-
-[Gothic hall build report](docs/builds/GOTHIC_HALL.md): 30,125 blocks, 53 lanterns, checked incremental edits, and real day, dusk, and interior captures.
 
 ## Features
 
