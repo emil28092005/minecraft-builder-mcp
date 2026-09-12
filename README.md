@@ -4,6 +4,10 @@ A Minecraft building editor for collaboration between a human and an AI agent.
 
 Working prototype: a Paper plugin, an editing core, an MCP/ACP Bridge, and a Fabric camera mod. Building, conflicts, undo, crash recovery, and `.schem` have been tested against local Paper through HTTP and real MCP stdio. The camera has been tested in Prism with one client: a real 1280×720 PNG was delivered through MCP. Signing in to the separate Codex profile and completing the first model turn through ACP still need verification.
 
+![Reference-based Gothic hall built and inspected in Minecraft](docs/builds/gothic-hall-polished-evening.png)
+
+[Gothic hall build report](docs/builds/GOTHIC_HALL.md): 30,125 blocks, 53 lanterns, checked incremental edits, and real day, dusk, and interior captures.
+
 ## Features
 
 - Reads bounded regions and builds boxes, lines, cylinders, and repeated elements.
@@ -90,7 +94,7 @@ JAVA_HOME="$HOME/.cache/minecraft-builder-mcp/jdk-25.0.2" camera-mod/gradlew --p
 
 - [Project design and future phases](docs/DESIGN.md).
 - [Implementation status and verification](docs/IMPLEMENTATION.md).
-- [Gothic hall from a reference: 29,354 blocks in the live world](docs/builds/GOTHIC_HALL.md).
+- [Gothic hall from a reference: 30,125 blocks in the live world](docs/builds/GOTHIC_HALL.md).
 - [Protocol](docs/PROTOCOL.md), [editing core and journal](world-core/README.md).
 - [Bridge, sign-in, and ACP limitations](bridge/README.md).
 

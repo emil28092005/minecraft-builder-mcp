@@ -1,5 +1,35 @@
 # Gothic Hall
 
+## Polished version
+
+The current build contains **30,125 blocks**, including **53 lanterns** and **642 persistent leaf blocks**. The polishing pass changed 4,569 positions across 87 checked operations: 1,489 additions, 718 removals, and 2,362 replacements.
+
+The main roof now has six small dormers instead of ten large ones. A thin iron ridge and window mullions, quieter gray stone bands, and a gold block bell bring the architecture closer to the reference. Portal lights, courtyard lamps, three nave chandeliers, wing and tower lights, low planted beds, and six narrow trees complete the scene. The existing entrance, stairs, timber structure, and connecting passage remain usable.
+
+![Polished Gothic Hall in daylight](gothic-hall-polished-day.png)
+
+![Polished Gothic Hall at dusk](gothic-hall-polished-evening.png)
+
+![Lanterns and chandeliers inside the great hall](gothic-hall-polished-interior.png)
+
+These are unprocessed Minecraft framebuffer captures without shaders: [day metadata](gothic-hall-polished-day.capture.json), [evening metadata](gothic-hall-polished-evening.capture.json), and [interior metadata](gothic-hall-polished-interior.capture.json). The exterior views use the same position and angles as the original capture below, with the server view distance increased to 12 chunks.
+
+The new geometry lives in `polish_architecture.py` and `polish_scene.py` alongside the frozen original modules. After constructing the baseline and its 18-block finishing pass, run:
+
+```bash
+python3 scripts/polish-gothic-hall.py plan
+python3 scripts/polish-gothic-hall.py apply
+python3 scripts/polish-gothic-hall.py verify
+```
+
+The manifest, ledger, and verification report are in `.runtime/gothic-hall/polish/`. Preparation checks the canonical baseline and the current blocks; a saved plan must still expect the same states. Every operation receives a durable idempotency key before application. The original manifests and ledgers are preserved.
+
+Final verification checked **30,843 positions**, including all 30,125 occupied positions and 718 removals to air, across 90 inspection tiles. It explicitly reported eight planted soil blocks observed as grass rather than dirt. This allowance is limited to the newly introduced planter soil during verification; preparation and application still require exact current states, and other mismatches stop the script without overwriting them. The final operation was `e7f0371d-e64c-48e0-86ae-13ac813dab98`.
+
+The world and journal were backed up locally before polishing, and the finished world was saved with `save-all flush`. The camera remains honest about its heuristic readiness: `serverRevisionVerified` is `false`; block verification is a separate server read. The old baseline verification commands below describe their historical stages and will report expected differences after this polishing pass.
+
+## Original baseline
+
 A reproducible build based on the [visual reference](../references/gothic-hall-v1.png): a large hall with galleries, a smaller two-story wing, a connecting passage, and a bell tower. Modules in `scripts/builds/gothic_hall/` generate the geometry; `scripts/build-gothic-hall.py` applies it through the Paper plugin's checked operations.
 
 This report records the original baseline before subsequent decorative polishing. It adapts the reference to the available palette: stone bricks, andesite, diorite, dark deepslate, wood, and tinted glass. No shaders were used. Detailed furnishing and landscaping were not part of this baseline; it includes a terrace, stairs, simple benches, and a raised platform. The bell is built from blocks, without a bell entity.

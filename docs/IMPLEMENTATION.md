@@ -29,6 +29,7 @@ The following scenarios passed on real Paper in a separately created test world:
 - A hollow cube through real MCP: 26 blocks; `.schem` export, the asset library, undo, import at the same anchor, and another undo restoring 27 blocks of air.
 - A missing camera returns an error without substituting an image.
 - After installing the mod in Prism, a 575-block tower was built and four real 1280×720 captures were obtained. The last completed the full Camera → Paper → Bridge → MCP ImageContent path. The first request failed when the viewpoint changed; a retry with the client stationary succeeded. [Test report](ONE_CLIENT_TEST.md).
+- A reference-based Gothic hall was built, photographed, and polished through checked recipes: 30,125 final blocks and 53 lanterns. Final verification covered 30,843 positions, including 718 removals; grass growth on eight newly planted soil blocks was explicitly recorded. Day, dusk, and interior captures were inspected. Nonpersistent leaves and waterlogged lantern states were rejected by the updated live Paper policy. [Build report](builds/GOTHIC_HALL.md).
 
 Real `codex-acp` completed `initialize` in a separate profile without login: ACP v1 and session loading support are confirmed. This does not yet test a model turn or tool calls after authentication. The tests did not invoke a model or consume model tokens.
 
@@ -54,4 +55,4 @@ Real `codex-acp` completed `initialize` in a separate profile without login: ACP
 
 1. The user logs in to the dedicated Codex profile, connects to Paper, and binds the owner. Test a small build requested through in-game `/ai`, response streaming, MCP use, and cancellation.
 2. Extend the verified single-client Prism scenario: test disconnection/freezing during capture and convenient switching between building and camera use.
-3. Complete the build → inspect → correct cycle, then reassess release readiness, limits, context deltas, and geometry extensions.
+3. Extend the demonstrated build → inspect → correct cycle to an authenticated ACP model turn, then reassess release readiness, limits, context deltas, and geometry extensions.

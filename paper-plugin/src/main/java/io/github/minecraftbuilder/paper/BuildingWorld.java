@@ -19,7 +19,9 @@ final class BuildingWorld implements WorldAccess, BlockPolicy {
         "dirt", "grass_block", "bedrock", "oak_planks", "spruce_planks", "birch_planks", "dark_oak_planks",
         "oak_log", "spruce_log", "birch_log", "dark_oak_log", "stripped_oak_log", "stripped_spruce_log",
         "stone_brick_stairs", "cobblestone_stairs", "oak_stairs", "spruce_stairs", "deepslate_tile_stairs",
-        "stone_brick_slab", "cobblestone_slab", "oak_slab", "spruce_slab", "smooth_stone_slab");
+        "stone_brick_slab", "cobblestone_slab", "oak_slab", "spruce_slab", "smooth_stone_slab",
+        "lantern", "iron_chain", "iron_bars", "stone_brick_wall", "oak_leaves", "moss_block",
+        "gray_stained_glass", "brown_stained_glass", "glowstone", "gold_block");
     BuildingWorld(World world) { this.world = world; }
     static List<String> supportedMaterials() { return MATERIALS.stream().sorted().map(s->"minecraft:"+s).toList(); }
     BlockData data(String state) { return parsed.computeIfAbsent(state, Bukkit::createBlockData).clone(); }
@@ -28,7 +30,8 @@ final class BuildingWorld implements WorldAccess, BlockPolicy {
         try {
             BlockData data = data(state);
             return MATERIALS.contains(data.getMaterial().getKey().getKey())
-                && !(data instanceof org.bukkit.block.data.Waterlogged w && w.isWaterlogged());
+                && !(data instanceof org.bukkit.block.data.Waterlogged w && w.isWaterlogged())
+                && !(data instanceof org.bukkit.block.data.type.Leaves leaves && !leaves.isPersistent());
         } catch (IllegalArgumentException e) { return false; }
     }
     private void ready(BlockPos p) {
