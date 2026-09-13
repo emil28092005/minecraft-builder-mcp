@@ -10,6 +10,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +48,10 @@ public final class CameraClient implements ClientModInitializer, CameraHttpServe
             .daemon(true).name("mcb-camera-watchdog").factory());
     private volatile JsonObject cachedHealth = CameraHttpServer.error("starting", "Waiting for client tick");
     private CameraHttpServer http;
+    private AutoConnectPolicy autoConnect;
+    private boolean autoConnectSuspended;
+    private boolean autoConnectPaused;
+    private long nextPauseCheck;
 
     @Override public void onInitializeClient() {
         String token = System.getenv("MCB_CAMERA_TOKEN");
@@ -55,6 +65,8 @@ public final class CameraClient implements ClientModInitializer, CameraHttpServe
             int port = Integer.parseInt(System.getenv().getOrDefault("MCB_CAMERA_PORT", "8766"));
             if (port < 1024 || port > 65535) throw new IllegalArgumentException("Invalid camera port");
             http = new CameraHttpServer(port, token, this);
+            String target = System.getenv("MCB_CAMERA_AUTO_CONNECT");
+            if (target != null && !target.isBlank()) autoConnect = new AutoConnectPolicy(target, System.currentTimeMillis());
             instance = this;
             ClientTickEvents.END_CLIENT_TICK.register(this::tick);
             ClientLifecycleEvents.CLIENT_STOPPING.register(this::stop);
@@ -93,12 +105,19 @@ public final class CameraClient implements ClientModInitializer, CameraHttpServe
     }
 
     private void tick(Minecraft client) {
+        autoConnect(client);
         Job job = active.get();
         JsonObject health = new JsonObject();
         health.addProperty("status", "ok");
         health.addProperty("connected", client.level != null && client.player != null);
         health.addProperty("spectator", client.player != null && client.player.isSpectator());
         health.addProperty("busy", job != null);
+        health.addProperty("autoConnectEnabled", autoConnect != null);
+        if (autoConnect != null) {
+            health.addProperty("autoConnectTarget", autoConnect.target());
+            health.addProperty("autoConnectAttempts", autoConnect.attempts());
+            health.addProperty("autoConnectPaused", autoConnectPaused || autoConnectSuspended);
+        }
         health.addProperty("updatedAt", Instant.now().toString());
         if (client.level != null) health.addProperty("dimension", dimension(client));
         if (client.player != null) health.addProperty("playerId", client.player.getUUID().toString());
@@ -136,6 +155,26 @@ public final class CameraClient implements ClientModInitializer, CameraHttpServe
         }
         if (!matchesView(client, job.request)) { job.fail("view_changed", "Observer view changed during capture"); return; }
         if (chunksLoaded(client)) job.stableTicks++; else { job.stableTicks = 0; job.readyFrames = 0; }
+    }
+
+    private void autoConnect(Minecraft client) {
+        if (autoConnect == null) return;
+        long now = System.currentTimeMillis();
+        if (now >= nextPauseCheck) {
+            autoConnectPaused = java.nio.file.Files.exists(client.gameDirectory.toPath().resolve("config/minecraft-builder-camera.autojoin-disabled"));
+            nextPauseCheck = now + 1000;
+        }
+        if (client.level != null) {
+            ServerData server = client.getCurrentServer();
+            if (server == null || !server.ip.equals(autoConnect.target())) autoConnectSuspended = true;
+        }
+        var screen = client.gui.screen();
+        boolean eligible = screen instanceof TitleScreen || screen instanceof DisconnectedScreen || screen instanceof JoinMultiplayerScreen;
+        if (!autoConnect.due(now, client.level != null || client.getConnection() != null,
+                eligible, autoConnectPaused || autoConnectSuspended || client.gui.overlay() != null)) return;
+        LOGGER.info("Observer connecting to configured local server (attempt {})", autoConnect.attempts());
+        ConnectScreen.startConnecting(new TitleScreen(), client, ServerAddress.parseString(autoConnect.target()),
+            new ServerData("Minecraft Builder local camera", autoConnect.target(), ServerData.Type.OTHER), false, null);
     }
 
     /** Called after GameRenderer.render, on Minecraft's render thread. Uses the supported GPU screenshot API. */

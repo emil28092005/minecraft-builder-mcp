@@ -2,38 +2,38 @@ package io.github.minecraftbuilder.paper;
 
 import io.github.minecraftbuilder.core.*;
 import org.bukkit.*;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import java.util.*;
 
-/** Small tested policy; unsupported existing contents are protected too. */
+/** Live registry block data with private, lossless block-entity snapshots for guarded edits and undo. */
 final class BuildingWorld implements WorldAccess, BlockPolicy {
     private final World world;
-    private final Map<String, BlockData> parsed = new HashMap<>();
-    private static final Set<String> MATERIALS = Set.of("air", "stone", "cobblestone", "mossy_cobblestone",
-        "stone_bricks", "mossy_stone_bricks", "cracked_stone_bricks", "chiseled_stone_bricks", "smooth_stone",
-        "granite", "polished_granite", "diorite", "polished_diorite", "andesite", "polished_andesite",
-        "deepslate", "cobbled_deepslate", "polished_deepslate", "deepslate_bricks", "deepslate_tiles",
-        "bricks", "quartz_block", "quartz_pillar", "smooth_quartz", "sandstone", "cut_sandstone", "smooth_sandstone",
-        "red_sandstone", "terracotta", "white_terracotta", "black_terracotta", "orange_terracotta",
-        "white_concrete", "gray_concrete", "black_concrete", "glass", "tinted_glass", "obsidian",
-        "dirt", "grass_block", "bedrock", "oak_planks", "spruce_planks", "birch_planks", "dark_oak_planks",
-        "oak_log", "spruce_log", "birch_log", "dark_oak_log", "stripped_oak_log", "stripped_spruce_log",
-        "stone_brick_stairs", "cobblestone_stairs", "oak_stairs", "spruce_stairs", "deepslate_tile_stairs",
-        "stone_brick_slab", "cobblestone_slab", "oak_slab", "spruce_slab", "smooth_stone_slab",
-        "lantern", "iron_chain", "iron_bars", "stone_brick_wall", "oak_leaves", "moss_block",
-        "gray_stained_glass", "brown_stained_glass", "glowstone", "gold_block");
+    private final PaperBlockStateCodec snapshots = new PaperBlockStateCodec();
+    private final Map<String, BlockData> parsed = new LinkedHashMap<>(128, 0.75f, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<String, BlockData> entry) { return size() > 4096; }
+    };
+
     BuildingWorld(World world) { this.world = world; }
-    static List<String> supportedMaterials() { return MATERIALS.stream().sorted().map(s->"minecraft:"+s).toList(); }
+    static List<String> supportedMaterials() { return Registry.BLOCK.stream().map(type -> type.getKey().toString()).sorted().toList(); }
     BlockData data(String state) { return parsed.computeIfAbsent(state, Bukkit::createBlockData).clone(); }
-    String canonical(String state) { if (!supports(state)) throw new RpcServer.Fault("unsupported_block", "Unsupported block: " + state); return data(state).getAsString(); }
-    public boolean supports(String state) {
-        try {
-            BlockData data = data(state);
-            return MATERIALS.contains(data.getMaterial().getKey().getKey())
-                && !(data instanceof org.bukkit.block.data.Waterlogged w && w.isWaterlogged())
-                && !(data instanceof org.bukkit.block.data.type.Leaves leaves && !leaves.isPersistent());
-        } catch (IllegalArgumentException e) { return false; }
+    String canonical(String state) {
+        // Opaque journal payloads are internal: model-supplied data is always parsed as BlockData.
+        try { return data(state).getAsString(); }
+        catch (IllegalArgumentException e) { throw new RpcServer.Fault("unsupported_block", "Invalid registered block or block properties"); }
     }
+    public boolean supports(String state) {
+        try { return supportsData(data(BlockSnapshots.state(state))); }
+        catch (IllegalArgumentException | NullPointerException e) { return false; }
+    }
+    static boolean supportsData(BlockData data) {
+        // A parsed BlockData already represents a registered block, unlike item-only Materials.
+        return data != null && data.getMaterial() != null && !data.getMaterial().isLegacy();
+    }
+    static Map<String, String> publicSnapshot(String value) { return BlockSnapshots.publicView(value); }
+    static String snapshotId(String value) { return BlockSnapshots.snapshotId(value); }
+    static String canonicalSnapshotState(String value) { return BlockSnapshots.state(value); }
+
     private void ready(BlockPos p) {
         if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("World access outside server thread");
         if (p.y() < world.getMinHeight() || p.y() >= world.getMaxHeight()) throw new RpcServer.Fault("out_of_bounds", "Position exceeds world height");
@@ -41,15 +41,26 @@ final class BuildingWorld implements WorldAccess, BlockPolicy {
         if (!world.getWorldBorder().isInside(new Location(world,p.x()+0.5,p.y(),p.z()+0.5))) throw new RpcServer.Fault("out_of_bounds", "Position exceeds world border");
     }
     public String getBlock(BlockPos p) { ready(p); return world.getBlockAt(p.x(),p.y(),p.z()).getBlockData().getAsString(); }
-    public void setBlock(BlockPos p, String state) {
+    public String captureBlock(BlockPos p) {
         ready(p);
-        // A neighbour may have changed since prepare. Never remove supports next to
-        // dynamic/unsupported blocks merely because the target itself still matches.
-        for (BlockPos d : List.of(new BlockPos(1,0,0),new BlockPos(-1,0,0),new BlockPos(0,1,0),new BlockPos(0,-1,0),new BlockPos(0,0,1),new BlockPos(0,0,-1))) {
-            BlockPos n=p.add(d);
-            if(n.y()>=world.getMinHeight()&&n.y()<world.getMaxHeight()&&!supports(getBlock(n)))
-                throw new RpcServer.Fault("unsupported_block","Adjacent environment changed at "+n);
-        }
-        world.getBlockAt(p.x(),p.y(),p.z()).setBlockData(data(state), false);
+        return snapshots.capture(world.getBlockAt(p.x(),p.y(),p.z()).getState());
+    }
+    public String prepareBlock(BlockPos p, String desired, String capturedBefore) {
+        if (BlockSnapshots.captured(desired)) return desired; // Exact private undo snapshot, never merge it.
+        BlockData after = data(desired);
+        BlockSnapshots.Value before = BlockSnapshots.decode(capturedBefore);
+        if (before.nbt() != null && data(before.state()).getMaterial() == after.getMaterial())
+            return BlockSnapshots.encode(after.getAsString(), snapshots.prepareData(before.nbt(), data(before.state()), after));
+        return snapshots.capture(after.createBlockState());
+    }
+    public void setBlock(BlockPos p, String state) {
+        setCapturedBlock(p, prepareBlock(p, canonical(state), captureBlock(p)));
+    }
+    public void setCapturedBlock(BlockPos p, String capturedState) {
+        ready(p);
+        BlockSnapshots.Value value = BlockSnapshots.decode(capturedState);
+        BlockState state = data(value.state()).createBlockState().copy(new Location(world, p.x(), p.y(), p.z()));
+        if (value.nbt() != null) snapshots.restoreData(state, value.nbt());
+        snapshots.place(state);
     }
 }

@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "scope": {
+    "project_id": "shacraft-lobby-v2",
+    "world_id": "6679385a-b67f-4e88-b6be-33836ced6f2d",
+    "world_epoch": "b7626ccf-9c75-4b00-9cf3-b8a42231c754"
+  },
+  "world_edits": 0,
+  "mode": "actual_after_snapshot",
+  "desired_blocks": 11502,
+  "interior_columns": 5888,
+  "independently_derived_wall_columns": 276,
+  "interior_voxels": 117673,
+  "interior_excluded_voxels": 87,
+  "volume_components": {
+    "components": [
+      {
+        "voxels": 117673,
+        "nonfull_voxels": 117473,
+        "contains_source": true
+      }
+    ],
+    "source_in_volume": true,
+    "note": "Disconnected sealed components are reported, not treated as escapes. The entire required membrane and exterior flood are checked."
+  },
+  "membrane": {
+    "passed": true,
+    "required_voxels": 17276,
+    "parts": {
+      "wall": 5457,
+      "floor": 5870,
+      "folded_boundary": 61,
+      "roof": 5888
+    },
+    "observed_materials": {
+      "barrier": 11396,
+      "smooth_sandstone": 4080,
+      "smooth_stone": 447,
+      "cut_sandstone": 425,
+      "polished_andesite": 137,
+      "stone_bricks": 16,
+      "waxed_oxidized_cut_copper": 12,
+      "chiseled_stone_bricks": 16,
+      "grass_block": 377,
+      "dirt": 12,
+      "green_concrete": 356,
+      "gold_block": 2
+    },
+    "nonfull_voxels": 0,
+    "examples": [],
+    "method": "Every voxel in N6(interior volume) minus interior volume must be an observed full collision cube."
+  },
+  "exterior_flood": {
+    "passed": true,
+    "observed_voxels": 220584,
+    "exterior_reached_voxels": 78339,
+    "interior_reached_from_exterior": 0,
+    "source_reached_from_exterior": false,
+    "unknown_or_partial_blocks_treated_as_empty": {
+      "stone_brick_wall": 293,
+      "stone_brick_stairs": 42,
+      "smooth_sandstone_slab": 505,
+      "iron_bars": 128,
+      "waxed_oxidized_cut_copper_stairs": 64,
+      "iron_chain": 16,
+      "spruce_leaves": 479,
+      "lantern": 16,
+      "oxeye_daisy": 60,
+      "azure_bluet": 39,
+      "white_tulip": 62,
+      "oak_leaves": 58,
+      "allium": 50,
+      "spruce_fence": 18,
+      "spruce_stairs": 18,
+      "pink_tulip": 49,
+      "smooth_sandstone_stairs": 8,
+      "waxed_oxidized_cut_copper_slab": 3
+    },
+    "leak_examples": [],
+    "method": "Six-neighbor free-voxel exterior flood; only known full collision cubes obstruct it."
+  },
+  "player_probes": {
+    "passed": true,
+    "player_width": 0.6,
+    "player_height": 1.8,
+    "source_headroom_observed_air": true,
+    "swept_crossing_probes": {
+      "diagonal": 3288,
+      "cardinal": 2280,
+      "folded_boundary": 178,
+      "floor": 1,
+      "roof": 1
+    },
+    "unblocked_probes": 0,
+    "examples": [],
+    "note": "Supplementary swept-AABB boundary probes; the independently derived full membrane is the complete static containment criterion."
+  },
+  "preserved_decor": {
+    "passed": true,
+    "protected_observed_states": 1016,
+    "changed_states": 0,
+    "examples": []
+  },
+  "volume": {
+    "passed": true,
+    "outside_desired_voxels": 610596,
+    "desired_voxels": 11502,
+    "mismatch_examples": [],
+    "scope_note": "Every voxel inside the supplied before snapshot; no claim for unobserved exterior voxels."
+  },
+  "passed": true,
+  "limitations": "Static continuous collision containment for normal nonspectator players only. No protection against spectator, breaking/removing blocks, operator commands, plugin teleports or arbitrary discontinuous teleport/pearl behavior. Actual snapshots are sequential, not atomic.",
+  "input_sha256": {
+    "before": "9332c546f50b174ec39b01430525eb903c926b43cbdfaa956a539759fbf0f7b2",
+    "after": "5fdbffc42df7a799e792bf5b31c1c45f5a7e02e09844860898bcdd2f79e199b3",
+    "layout": "95b430dd0815c8b0d1b87932e9ac1033413f3e82766dd1d4e67aefe4cbaecfa8",
+    "metadata": "12caa7f14f15128736a0525a765f67a9d9f6b343fc912b36cd41d2e76ab39904"
+  }
+}

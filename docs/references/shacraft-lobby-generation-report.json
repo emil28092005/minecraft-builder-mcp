@@ -1,0 +1,11 @@
+{
+  "recipe_id": "b013cd330993b262ed0192659c9276af33e1c6fdb749a02ad332086a6d99e56a",
+  "chunks": 2304,
+  "mismatches": 0,
+  "water_columns": 59609,
+  "min_surface_y": 48,
+  "max_surface_y": 203,
+  "elapsed_ms": 144136,
+  "world": "shacraft_lobby",
+  "verified_columns": 589824
+}

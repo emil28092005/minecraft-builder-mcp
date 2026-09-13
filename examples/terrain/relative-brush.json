@@ -1,0 +1,11 @@
+{
+  "min": {"x": -4, "y": 80, "z": -4},
+  "max": {"x": 4, "y": 92, "z": 4},
+  "center": {"x": 0, "z": 0},
+  "radius": 3,
+  "action": "raise",
+  "amount": 3,
+  "strength": 1,
+  "falloff": 0.5,
+  "preserve": []
+}

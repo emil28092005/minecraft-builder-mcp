@@ -29,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * No world writes occur before a durable intent, nor before the post-IO live recheck.
  */
 public final class EditEngine {
+    /** Bounds durable snapshot memory before any plan persistence or world mutation. */
+    static final long MAX_PLAN_SNAPSHOT_BYTES = 8L * 1024 * 1024;
     private final WorldAccess world;
     private final BlockPolicy policy;
     private final ContextGuard guard;
@@ -160,14 +162,19 @@ public final class EditEngine {
         for (BlockPos position : dependencyPositions) requireInside(region, position);
         List<Change> changes = new ArrayList<>();
         Map<BlockPos, String> captured = new HashMap<>();
+        long snapshotBytes = 0;
         for (var entry : new TreeMap<>(desired).entrySet()) {
             String before = read(entry.getKey());
             requireSupported(before); captured.put(entry.getKey(), before);
-            changes.add(new Change(entry.getKey(), before, entry.getValue()));
+            String after = Objects.requireNonNull(world.prepareBlock(entry.getKey(), entry.getValue(), before));
+            requireSupported(after);
+            snapshotBytes = addSnapshotBytes(snapshotBytes, before, after);
+            changes.add(new Change(entry.getKey(), before, after));
         }
         List<Plan.Dependency> dependencies = new ArrayList<>();
         for (BlockPos position : dependencyPositions.stream().sorted().toList()) {
             String before = captured.containsKey(position) ? captured.get(position) : read(position);
+            snapshotBytes = addSnapshotBytes(snapshotBytes, before);
             requireSupported(before); dependencies.add(new Plan.Dependency(position, before));
         }
         Plan plan = new Plan(id, projectId, worldEpoch, region, changes, dependencies, now,
@@ -321,7 +328,7 @@ public final class EditEngine {
             if (current.equals(change.desired())) { op.skipped++; op.cursor++; }
             else {
                 try {
-                    world.setBlock(change.pos(), change.desired());
+                    world.setCapturedBlock(change.pos(), change.desired());
                     String actual = read(change.pos());
                     if (!actual.equals(change.desired())) {
                         recovery(op, "Write result is uncertain at " + change.pos()); break;
@@ -616,9 +623,17 @@ public final class EditEngine {
         if (op == null) throw new IllegalArgumentException("Unknown operation");
         return op;
     }
-    private String read(BlockPos pos) { return Objects.requireNonNull(world.getBlock(pos), "World returned null state"); }
+    private String read(BlockPos pos) { return Objects.requireNonNull(world.captureBlock(pos), "World returned null snapshot"); }
+    private static long addSnapshotBytes(long used, String... values) {
+        for (String value : values) {
+            used += value.getBytes(StandardCharsets.UTF_8).length;
+            if (used > MAX_PLAN_SNAPSHOT_BYTES)
+                throw new IllegalArgumentException("snapshot_budget_exceeded: split the edit into smaller plans (8 MiB snapshot limit)");
+        }
+        return used;
+    }
     private void requireSupported(String state) {
-        if (state == null || !policy.supports(state)) throw new IllegalArgumentException("Unsupported block state: " + state);
+        if (state == null || !policy.supports(state)) throw new IllegalArgumentException("Unsupported block state or stored snapshot");
     }
     private static void requireInside(Region region, BlockPos pos) {
         if (pos == null || !region.contains(pos)) throw new IllegalArgumentException("Position outside authorized region: " + pos);
@@ -632,11 +647,17 @@ public final class EditEngine {
         if (plan.changes().size() > limits.maxChanges() || plan.dependencies().size() > limits.maxReadDependencies())
             throw new IOException("Stored plan exceeds configured limits");
         Set<BlockPos> positions = new HashSet<>();
+        long snapshotBytes = 0;
         for (Change change : plan.changes()) {
             if (!plan.region().contains(change.pos()) || !positions.add(change.pos()))
                 throw new IOException("Stored plan contains invalid/duplicate positions");
+            try { snapshotBytes = addSnapshotBytes(snapshotBytes, change.expected(), change.desired()); }
+            catch (IllegalArgumentException e) { throw new IOException("Stored plan exceeds snapshot budget", e); }
         }
-        for (Plan.Dependency dependency : plan.dependencies())
+        for (Plan.Dependency dependency : plan.dependencies()) {
             if (!plan.region().contains(dependency.pos())) throw new IOException("Stored dependency is outside region");
+            try { snapshotBytes = addSnapshotBytes(snapshotBytes, dependency.expected()); }
+            catch (IllegalArgumentException e) { throw new IOException("Stored plan exceeds snapshot budget", e); }
+        }
     }
 }

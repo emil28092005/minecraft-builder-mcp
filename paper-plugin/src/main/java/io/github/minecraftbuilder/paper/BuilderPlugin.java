@@ -30,12 +30,14 @@ public final class BuilderPlugin extends JavaPlugin {
     private EditEngine engine;
     private World world;
     private BuildingWorld access;
+    private MaterialCatalog materials;
     private SchematicAssets assets;
     private Region region;
     private String projectId, epoch, owner, adminToken, agentToken;
     private volatile boolean ioBusy, halted;
     private boolean writesPaused;
     private int maxBlocks;
+    private final Map<String,TerrainRecipe> terrains = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<String,JsonObject> messages = new LinkedHashMap<>();
     private final Map<String,Part> parts = new LinkedHashMap<>();
     private final Map<String,JsonObject> cameras = new LinkedHashMap<>();
@@ -65,10 +67,11 @@ public final class BuilderPlugin extends JavaPlugin {
             region=new Region(world.getUID().toString(), configPos("region.min"), configPos("region.max"));
             maxBlocks=Math.min(4096,Math.max(1,getConfig().getInt("max-plan-blocks",4096)));
             access=new BuildingWorld(world);
-            assets=new SchematicAssets(getDataFolder().toPath().resolve("schematics"));
+            materials=new MaterialCatalog();
+            assets=new SchematicAssets(getDataFolder().toPath().resolve("schematics"),BuilderPlugin::rotateSchematicState);
             loadMetadata();
             disk=Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"mcb-journal");t.setDaemon(true);return t;});
-            Limits limits=new Limits(maxBlocks,512,Math.min(128,Math.max(1,getConfig().getInt("slice-blocks",128))),
+            Limits limits=new Limits(maxBlocks,4096,Math.min(128,Math.max(1,getConfig().getInt("slice-blocks",128))),
                 Math.min(5,Math.max(1,getConfig().getInt("slice-millis",5)))*1_000_000L,600_000,32);
             engine=new EditEngine(access,access,new ContextGuard(){
                 public void check(Plan plan){guard(plan);}
@@ -157,7 +160,10 @@ public final class BuilderPlugin extends JavaPlugin {
                     if(world.getNearbyEntities(box).stream().anyMatch(e->!(e instanceof Player)))throw new Fault("unsupported_entity","Export region contains entities; this prototype exports blocks only");
                     Map<BlockPos,String> data=new LinkedHashMap<>();
                     for(int y=area.min().y();y<=area.max().y();y++)for(int z=area.min().z();z<=area.max().z();z++)for(int x=area.min().x();x<=area.max().x();x++){
-                        BlockPos at=new BlockPos(x,y,z);String state=access.getBlock(at);if(!access.supports(state))throw new Fault("unsupported_block","Export contains unsupported block "+state);data.put(at,state);
+                        BlockPos at=new BlockPos(x,y,z);String state=access.getBlock(at);
+                        if(world.getBlockAt(x,y,z).getState() instanceof org.bukkit.block.TileState)
+                            throw new Fault("unsupported_block_entity","Schematic export cannot retain block-entity data at "+at+"; no asset was written");
+                        if(!access.supports(state))throw new Fault("unsupported_block","Export contains unsupported block "+state);data.put(at,state);
                     }return data;
                 });
                 return assets.exportSnapshot(required(p,"name"),snapshot,p.has("origin")?pos(p.getAsJsonObject("origin")):pos(p.getAsJsonObject("min")),main(()->Bukkit.getUnsafe().getDataVersion()));
@@ -168,8 +174,62 @@ public final class BuilderPlugin extends JavaPlugin {
                 try{engine.persistPlan(plan.id());return planSummary(plan);}finally{main(()->{ioBusy=false;return null;});}
             }
             case "project_context": return main(this::context);
+            case "material_search": return main(()->materials.search(str(p,"query",""),str(p,"kind","block"),p.has("limit")?integer(p,"limit"):null,p.has("cursor")?str(p,"cursor",""):null));
+            case "material_describe": return main(()->materials.describe(required(p,"id")));
             case "region_inspect": return main(()->inspect(p));
             case "region_changes": return Map.of("status","resync_required","reason","Prototype uses fresh bounded reads; complete event delta journal is not implemented");
+            case "terrain_brush_prepare": {
+                TerrainBrush.Spec brush=TerrainBrush.parse(p.getAsJsonObject("brush"));
+                record PreparedBrush(TerrainBrush.Result result,Plan plan) {}
+                PreparedBrush prepared=main(()->{
+                    available();Region scan=brush.bounds();
+                    if(!region.contains(scan.min())||!region.contains(scan.max()))throw new Fault("out_of_bounds","Brush scan including halo exceeds project area");
+                    Map<BlockPos,String> snapshot=new LinkedHashMap<>();
+                    for(int y=scan.min().y();y<=scan.max().y();y++)for(int z=scan.min().z();z<=scan.max().z();z++)for(int x=scan.min().x();x<=scan.max().x();x++){
+                        BlockPos at=new BlockPos(x,y,z);snapshot.put(at,access.getBlock(at));
+                    }
+                    TerrainBrush.Result result=TerrainBrush.compile(brush,snapshot,maxBlocks);
+                    if(result.desired().isEmpty())return new PreparedBrush(result,null);
+                    Map<BlockPos,String> desired=new LinkedHashMap<>(result.desired());desired.replaceAll((at,state)->access.canonical(state));
+                    for(BlockPos at:desired.keySet())checkSurroundings(at,desired);
+                    Plan plan=engine.prepare(projectId,epoch,region,desired,result.dependencies());ioBusy=true;
+                    return new PreparedBrush(result,plan);
+                });
+                if(prepared.plan()==null){Map<String,Object> preview=new LinkedHashMap<>(BrushPreview.render(prepared.result()));preview.put("plan_state","empty");preview.put("changed_blocks",0);return preview;}
+                try{
+                    engine.persistPlan(prepared.plan().id());Map<String,Object> preview=new LinkedHashMap<>(BrushPreview.render(prepared.result()));
+                    preview.putAll(planSummary(prepared.plan()));preview.put("plan_state","prepared");return preview;
+                }finally{main(()->{ioBusy=false;return null;});}
+            }
+            case "terrain_preview": {
+                TerrainRecipe terrain=new TerrainRecipe(p.getAsJsonObject("recipe"));
+                Object preview=TerrainPreview.render(terrain,p.has("resolution")?integer(p,"resolution"):128,maxBlocks);
+                synchronized(terrains){terrains.put(terrain.id(),terrain);while(terrains.size()>32)terrains.remove(terrains.keySet().iterator().next());}
+                return preview;
+            }
+            case "terrain_prepare": {
+                String terrainId=required(p,"terrain_id");TerrainRecipe terrain=terrains.get(terrainId);
+                if(terrain==null)throw new Fault("not_found","Terrain recipe expired or server restarted; call terrain_preview again with the saved recipe");
+                int tileIndex=integer(p,"tile_index");TerrainRecipe.Tile tile=terrain.tile(tileIndex,maxBlocks);
+                Map<BlockPos,String> desired=new LinkedHashMap<>(tile.blocks());
+                Plan plan=main(()->{
+                    available();
+                    if(!region.contains(tile.bounds().min())||!region.contains(tile.bounds().max()))throw new Fault("out_of_bounds","Terrain tile exceeds current project area");
+                    desired.replaceAll((at,state)->access.canonical(state));
+                    boolean changed=false;
+                    for(BlockPos at:desired.keySet()){
+                        String before=access.getBlock(at);changed|=!before.equals(desired.get(at));
+                        if(!TerrainRecipe.replaceable(before))throw new Fault("protected_terrain","Tile contains a building or non-terrain block at "+at+"; preserve it explicitly or choose another tile");
+                        checkSurroundings(at,desired);
+                    }
+                    if(!changed)return null;
+                    Plan value=engine.prepare(projectId,epoch,region,desired,Set.of());ioBusy=true;return value;
+                });
+                if(plan==null)return Map.of("status","empty","terrain_id",terrainId,"tile_index",tileIndex,"tile_bounds",tile.bounds(),"changed_blocks",0,"reason","No changed target blocks (unchanged or preserved)");
+                try{engine.persistPlan(plan.id());Map<String,Object> summary=new LinkedHashMap<>(planSummary(plan));
+                    summary.put("terrain_id",terrainId);summary.put("tile_index",tileIndex);summary.put("tile_bounds",tile.bounds());return summary;
+                }finally{main(()->{ioBusy=false;return null;});}
+            }
             case "build_prepare": {
                 JsonObject recipe=p.getAsJsonObject("recipe");
                 Map<BlockPos,String> desired=new LinkedHashMap<>(RecipeCompiler.compile(recipe,maxBlocks));
@@ -184,6 +244,7 @@ public final class BuilderPlugin extends JavaPlugin {
                         if(!part.positions().containsAll(desired.keySet()))throw new Fault("out_of_bounds","Patch exceeds the exact part mask; create a new part for an extension");
                     }
                     for(BlockPos at:desired.keySet())checkSurroundings(at,desired);
+                    if(p.has("expected_blocks"))ExpectedBlocks.check(p.getAsJsonArray("expected_blocks"),desired.keySet(),access::canonical,access::getBlock,at->BuildingWorld.snapshotId(access.captureBlock(at)));
                     Plan value=engine.prepare(projectId,epoch,region,desired,dependencies);ioBusy=true;return value;
                 });
                 try { engine.persistPlan(plan.id()); return planSummary(plan); }
@@ -228,11 +289,12 @@ public final class BuilderPlugin extends JavaPlugin {
     }
     private Object context() {
         return Map.ofEntries(Map.entry("schema_version",1),Map.entry("project_id",projectId),Map.entry("world_id",world.getUID().toString()),Map.entry("world_epoch",epoch),Map.entry("region",region),
-            Map.entry("max_plan_blocks",maxBlocks),Map.entry("parts",parts.values().stream().limit(64).map(p->Map.of("part_id",p.id(),"name",p.name(),"protected",p.locked(),"block_count",p.positions().size())).toList()),
+            Map.entry("max_plan_blocks",maxBlocks),Map.entry("checked_expected_blocks",true),Map.entry("parts",parts.values().stream().limit(64).map(p->Map.of("part_id",p.id(),"name",p.name(),"protected",p.locked(),"block_count",p.positions().size())).toList()),
             Map.entry("parts_total",parts.size()),Map.entry("operations",engine.recentOperations(20).stream().map(v->Map.of("operation_id",v.id(),"plan_id",v.planId(),"status",v.status().name().toLowerCase(Locale.ROOT),"written",v.written(),"total_changes",v.totalChanges())).toList()),
             Map.entry("operations_total",engine.operationCount()),Map.entry("truncated",parts.size()>64||engine.operationCount()>20),
-            Map.entry("supported_materials",BuildingWorld.supportedMaterials()),Map.entry("recipe",Map.of("version",1,"operations",List.of("box","line","cylinder","repeat"))),Map.entry("capabilities",List.of("region_inspect","build_prepare","build_apply","operation_status","operation_cancel","operation_undo_prepare","part_define","part_get","camera_list","camera_capture","asset_list","schematic_export","schematic_import_prepare")),
-            Map.entry("limitations",List.of("One configured owner and project","Loaded chunks only","No automatic recipe merge","Complete delta journal is not implemented","Camera readiness is heuristic","Sponge schematic v2 only; no entities or block entities")));
+            Map.entry("terrain",Map.of("version",1,"features",List.of("hill","ridge","plateau","channel","basin","terrace"),"modes",List.of("sculpt","fill","cut"),"max_cached_recipes",32,"fluid_placement",false,"brush_actions",List.of("raise","lower","flatten","smooth"),"brush_max_scan_blocks",4096)),Map.entry("material_catalog",materials.summary()),Map.entry("recipe",Map.of("version",1,"operations",List.of("box","line","cylinder","repeat"))),Map.entry("capabilities",List.of("material_search","material_describe","region_inspect","build_prepare","build_apply","operation_status","operation_cancel","operation_undo_prepare","part_define","part_get","camera_list","camera_capture","asset_list","schematic_export","schematic_import_prepare","terrain_preview","terrain_prepare","terrain_brush_prepare")),
+            Map.entry("block_data",Map.of("all_registered_block_states",true,"fluid_placement",true,"block_entity_snapshots",true,"raw_nbt_editing",false,"item_inventory_editing",false)),
+            Map.entry("limitations",List.of("One configured owner and project","Loaded chunks only","No automatic recipe merge","Complete delta journal is not implemented","Camera readiness is heuristic","Schematic v2: entity and block-entity payloads rejected","Later world simulation is not a journaled direct edit")));
     }
     private Object inspect(JsonObject p) {
         Region area=new Region(world.getUID().toString(),pos(p.getAsJsonObject("min")),pos(p.getAsJsonObject("max")));
@@ -240,8 +302,14 @@ public final class BuilderPlugin extends JavaPlugin {
         if(area.volume()>4096)throw new Fault("budget_exceeded","Read at most 4096 blocks per request");
         Map<String,Integer> palette=new TreeMap<>();List<Object> blocks=new ArrayList<>();
         boolean exact=str(p,"detail","summary").equals("blocks");
+        long snapshotBytes=0;
         for(int y=area.min().y();y<=area.max().y();y++)for(int z=area.min().z();z<=area.max().z();z++)for(int x=area.min().x();x<=area.max().x();x++){
-            BlockPos at=new BlockPos(x,y,z);String state=access.getBlock(at);palette.merge(state,1,Integer::sum);if(exact)blocks.add(Map.of("pos",at,"state",state));
+            BlockPos at=new BlockPos(x,y,z);String state=access.getBlock(at);palette.merge(state,1,Integer::sum);
+            if(exact){
+                String captured=access.captureBlock(at);snapshotBytes+=captured.getBytes(StandardCharsets.UTF_8).length;
+                if(snapshotBytes>8_388_608)throw new Fault("budget_exceeded","Block-entity snapshots exceed 8 MiB; inspect a smaller area");
+                Map<String,Object> value=new LinkedHashMap<>(BuildingWorld.publicSnapshot(captured));value.put("pos",at);blocks.add(value);
+            }
         }
         return Map.of("region",area,"palette",palette,"blocks",blocks,"sampled_at",System.currentTimeMillis(),"world_epoch",epoch,"truncated",false);
     }
@@ -249,7 +317,22 @@ public final class BuilderPlugin extends JavaPlugin {
         return Map.of("plan_id",plan.id(),"plan_hash",hash(plan),"changed_blocks",plan.changes().stream().filter(c->!c.expected().equals(c.desired())).count(),"region",plan.region(),"expires_at",plan.expiresAtMillis());
     }
     private Map<String,Object> status(OperationView v) {
-        return Map.ofEntries(Map.entry("operation_id",v.id()),Map.entry("plan_id",v.planId()),Map.entry("status",v.status().name().toLowerCase(Locale.ROOT)),Map.entry("written",v.written()),Map.entry("total_changes",v.totalChanges()),Map.entry("processed",v.processed()),Map.entry("conflicts",v.conflicts()),Map.entry("message",Objects.toString(v.message(),"")));
+        return Map.ofEntries(Map.entry("operation_id",v.id()),Map.entry("plan_id",v.planId()),Map.entry("status",v.status().name().toLowerCase(Locale.ROOT)),Map.entry("written",v.written()),Map.entry("total_changes",v.totalChanges()),Map.entry("processed",v.processed()),Map.entry("conflicts",v.conflicts().stream().map(BuilderPlugin::publicConflict).toList()),Map.entry("message",Objects.toString(v.message(),"")));
+    }
+    private static Map<String,Object> publicConflict(Conflict conflict) {
+        Map<String,Object> result=new LinkedHashMap<>();result.put("pos",conflict.pos());result.put("reason",conflict.reason());
+        for(var entry:Map.of("expected",conflict.expected(),"current",conflict.current(),"desired",conflict.desired()).entrySet()){
+            var snapshot=BuildingWorld.publicSnapshot(entry.getValue());result.put(entry.getKey(),snapshot.get("state"));
+            if(snapshot.containsKey("snapshot_id"))result.put(entry.getKey()+"_snapshot_id",snapshot.get("snapshot_id"));
+        }
+        return result;
+    }
+    private static String rotateSchematicState(String state,int degrees)throws IOException {
+        try{
+            var data=Bukkit.createBlockData(state);
+            data.rotate(switch(degrees){case 0->org.bukkit.block.structure.StructureRotation.NONE;case 90->org.bukkit.block.structure.StructureRotation.CLOCKWISE_90;case 180->org.bukkit.block.structure.StructureRotation.CLOCKWISE_180;case 270->org.bukkit.block.structure.StructureRotation.COUNTERCLOCKWISE_90;default->throw new IllegalArgumentException("Unsupported rotation");});
+            return data.getAsString();
+        }catch(IllegalArgumentException failure){throw new IOException("Invalid runtime schematic block state",failure);}
     }
     private String hash(Plan p) {
         try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(json.toJson(p).getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException e){throw new AssertionError(e);}

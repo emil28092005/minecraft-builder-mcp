@@ -8,6 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { client, ndJsonStream, PROTOCOL_VERSION, type ClientConnection, type McpServer, type SessionNotification } from '@agentclientprotocol/sdk';
 
 import { agentEnvironment, codexPaths, prepareCodexHome } from './security.js';
+import { BackendError } from './backend.js';
+import { AGENT_INSTRUCTIONS as INSTRUCTIONS } from './building-guidance.js';
+const INSTRUCTIONS_HASH = createHash('sha256').update(INSTRUCTIONS).digest('hex');
 export { agentEnvironment } from './security.js';
 
 const require = createRequire(import.meta.url);
@@ -20,9 +23,11 @@ export interface AcpOptions {
   timeoutMs?: number; startupTimeoutMs?: number;
   env?: NodeJS.ProcessEnv;
 }
-interface SavedSession { sessionId: string; summary: string; interrupted: boolean }
+interface SavedSession { sessionId: string; summary: string; interrupted: boolean; instructionsHash?: string }
 
-const INSTRUCTIONS = `You are the Minecraft builder for the current authorized project. Respond in the player's language using short game-chat messages. Use only minecraft-builder-mcp to inspect and edit the world. Begin each new task with project_context; read relevant world data before designing. Only implemented server capabilities may be used. Prepare compact geometry, inspect statistics, apply using stable idempotency keys, and poll operation_status. Preserve manual edits: conflict requires localized redesign or the user's decision, never blindly overwrite fresh snapshots. A cancelled or failed operation may have partial writes. Camera requests are asynchronous; poll capture_id and inspect actual image. If unavailable, explicitly say visually unverified. Never use console commands, shell, files, or other MCP servers to modify Minecraft. Do not claim any action completed without server evidence.`;
+
+const MCP_STARTUP_MESSAGE = 'Minecraft MCP не запустился: инструменты строительства недоступны. Запрос остановлен; проверь настройки и процесс моста.';
+const MINECRAFT_TOOLS = new Set(['project_context', 'material_search', 'material_describe', 'region_inspect', 'build_prepare', 'build_apply', 'operation_status', 'operation_cancel', 'operation_undo_prepare', 'part_get', 'part_define', 'camera_list', 'camera_capture', 'asset_list', 'schematic_export', 'schematic_import_prepare', 'terrain_preview', 'terrain_prepare', 'terrain_brush_prepare']);
 
 export class CodexSession implements AgentSession {
   private child?: ChildProcessWithoutNullStreams;
@@ -33,12 +38,15 @@ export class CodexSession implements AgentSession {
   private cancelled = false;
   private buffer = '';
   private finalText = '';
-  private lastSent = 0;
   private sentChars = 0;
+  private delivery: Promise<void> = Promise.resolve();
   private firstPrompt = true;
+  private instructionsHash = '';
   private summary = '';
   private reportReset = false;
   private reportInterrupted = false;
+  private readonly mcpStartupFailures = new Set<string>();
+  private readonly minecraftCalls = new Set<string>();
   private readonly dir: string;
   private readonly stateFile: string;
   constructor(private readonly message: Pick<ChatMessage, 'projectId' | 'playerId'>, private readonly options: AcpOptions) {
@@ -58,19 +66,32 @@ export class CodexSession implements AgentSession {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') this.reportReset = true;
     }
     this.summary = saved?.summary.slice(0, 5000) ?? '';
+    this.instructionsHash = saved?.instructionsHash ?? '';
     this.reportInterrupted = saved?.interrupted ?? false;
     const executable = this.options.command ?? process.execPath;
     const args = this.options.args ?? (this.options.command ? [] : [require.resolve('@agentclientprotocol/codex-acp')]);
+    this.mcpStartupFailures.clear();
     const child = spawn(executable, args, { cwd: this.dir, stdio: ['pipe','pipe','pipe'], env: agentEnvironment(this.options.env ?? process.env, paths), shell: false, detached: process.platform !== 'win32' });
     this.child = child;
     // Adapter stderr may contain prompts or secrets. Drain it without logging raw content.
     child.stderr.resume();
     const app = client({ name: 'minecraft-builder-mcp-chat' });
-    app.onRequest('session/request_permission', async () => {
+    app.onRequest('session/request_permission', async ({ params }) => {
+      // Only correlate a one-use approval to a known Minecraft call advertised
+      // by this adapter in this active owner turn. Paper enforces the scope.
+      if (this.child === child && this.active && !this.cancelled && !this.mcpStartupError() && params.sessionId === this.sessionId
+        && params._meta?.is_mcp_tool_approval === true
+        && this.minecraftCalls.has(params.toolCall.toolCallId)
+        && params.options.some(option => option.kind === 'allow_once' && option.optionId === 'allow_once')) {
+        this.minecraftCalls.delete(params.toolCall.toolCallId);
+        return { outcome: { outcome: 'selected', optionId: 'allow_once' } };
+      }
       await this.currentReply?.('Codex запросил дополнительное разрешение. Оно отклонено: подтверждение через игровой чат пока не реализовано.', false, true);
       return { outcome: { outcome: 'cancelled' } };
     });
-    app.onNotification('session/update', ({ params }) => this.onUpdate(params));
+    app.onNotification('session/update', ({ params }) => {
+      if (this.child === child) return this.onUpdate(params);
+    });
     this.connection = app.connect(ndJsonStream(Writable.toWeb(child.stdin), Readable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>));
     const connection = this.connection;
     child.once('error', () => connection.close(new Error('Cannot start the ACP process. Check MCB_ACP_COMMAND.')));
@@ -102,55 +123,114 @@ export class CodexSession implements AgentSession {
         this.sessionId = created.sessionId; configOptions = created.configOptions; this.firstPrompt = true;
         if (saved) this.reportReset = true;
       }
+      const mcpError = this.mcpStartupError();
+      if (mcpError) throw mcpError;
       if (this.options.model) {
         const config = configOptions?.find(option => option.category === 'model' || option.id === 'model');
         if (!config) throw new Error('Agent did not advertise a model selector; unset MCB_MODEL or use a compatible adapter.');
         await connection.agent.request('session/set_config_option', { sessionId: this.sessionId, configId: config.id, value: this.options.model });
       }
       await this.save(false);
+      const lateMcpError = this.mcpStartupError();
+      if (lateMcpError) throw lateMcpError;
     } catch (error) { this.close(); throw error; }
     finally { clearTimeout(setupTimeout); }
   }
+  private mcpStartupError(): BackendError | undefined {
+    return this.sessionId && this.mcpStartupFailures.has(this.sessionId)
+      ? new BackendError('mcp_unavailable', MCP_STARTUP_MESSAGE) : undefined;
+  }
   private async onUpdate(params: SessionNotification): Promise<void> {
-    // History replay from session/load is suppressed; another player's chat never receives it.
-    if (!this.active || params.sessionId !== this.sessionId || !this.currentReply) return;
     const update = params.update;
+    // codex-acp 1.11.0 synthesizes this reserved startup event separately from
+    // thread history. It can arrive before session/new or session/load returns.
+    // Never expose its raw content: startup errors may contain tokens or paths.
+    if (update.sessionUpdate === 'tool_call' && update.toolCallId === 'mcp_startup.minecraft-builder-mcp'
+      && update.title === 'mcp__minecraft-builder-mcp__startup' && update.kind === 'other' && update.status === 'failed') {
+      this.mcpStartupFailures.add(params.sessionId);
+      const error = this.mcpStartupError();
+      if (error && this.active) this.connection?.close(error);
+      return;
+    }
+    // History replay from session/load is suppressed; another player's chat never receives it.
+    if (!this.active || params.sessionId !== this.sessionId || !this.currentReply || this.mcpStartupError()) return;
+    if (update.sessionUpdate === 'tool_call') {
+      const input = update.rawInput as Record<string, unknown> | undefined;
+      if (update._meta?.is_mcp_tool_call === true && update.kind === 'execute'
+        && (update.status === 'pending' || update.status === 'in_progress')
+        && input?.server === 'minecraft-builder-mcp' && typeof input.tool === 'string'
+        && MINECRAFT_TOOLS.has(input.tool) && update.title === `mcp.minecraft-builder-mcp.${input.tool}`
+        && this.minecraftCalls.size < 128) this.minecraftCalls.add(update.toolCallId);
+    } else if (update.sessionUpdate === 'tool_call_update'
+      && (update.status === 'completed' || update.status === 'failed')) this.minecraftCalls.delete(update.toolCallId);
     if (update.sessionUpdate === 'agent_message_chunk' && update.content.type === 'text') {
       this.finalText = (this.finalText + update.content.text).slice(0, 8000);
-      this.buffer += update.content.text;
-      if (this.buffer.length >= 180 || Date.now() - this.lastSent >= 1500) await this.flush(false);
+      const remaining = Math.max(0, 8000 - this.sentChars - this.buffer.length);
+      this.buffer += update.content.text.slice(0, safeTextEnd(update.content.text, remaining));
+      await this.flush(false);
     }
     // Deliberately do not forward thought chunks, tool arguments, or raw terminal output.
   }
   private async flush(done: boolean): Promise<void> {
-    const remaining = Math.max(0, 8000 - this.sentChars);
-    const clean = this.buffer.replace(/[\u0000-\u001f\u007f§]/g, ' ').trim().slice(0, remaining);
-    this.buffer = '';
-    if (clean) {
-      for (let offset = 0; offset < clean.length; offset += 240) await this.currentReply?.(clean.slice(offset, offset + 240), false);
+    const reply = this.currentReply;
+    if (!reply) return;
+    const { messages, remainder } = chatMessages(this.buffer, done);
+    // Reserve text synchronously: ACP notifications can arrive while a reply is
+    // awaiting HTTP delivery. They must not flush or account for the same text.
+    this.buffer = remainder;
+    for (const message of messages) {
+      const clean = message.slice(0, safeTextEnd(message, Math.max(0, 8000 - this.sentChars)));
+      if (!clean) continue;
       this.sentChars += clean.length;
+      this.delivery = this.delivery.then(() => reply(clean, false));
     }
-    this.lastSent = Date.now();
-    if (done) await this.currentReply?.(this.cancelled ? 'Остановлено. Уже изменённые блоки остаются в истории.' : this.sentChars ? '' : 'Ход Codex завершён без текстового ответа; состояние мира доступно через /ai status.', true);
+    if (done) {
+      const status = this.cancelled ? 'Остановлено. Уже изменённые блоки остаются в истории.' : this.sentChars ? '' : 'Ход Codex завершён без текстового ответа; состояние мира доступно через /ai status.';
+      this.delivery = this.delivery.then(() => reply(status, true));
+    }
+    await this.delivery;
   }
   async prompt(text: string, reply: Reply): Promise<void> {
     if (this.active) throw new Error('This ACP session already has an active turn.');
     this.currentReply = reply; this.cancelled = false;
-    await this.start();
+    try {
+      await this.start();
+      const mcpError = this.mcpStartupError();
+      if (mcpError) throw mcpError;
+    } catch (error) {
+      if (error instanceof BackendError && error.code === 'mcp_unavailable') await reply(MCP_STARTUP_MESSAGE, false, true);
+      this.currentReply = undefined;
+      throw error;
+    }
     if (this.cancelled) { await reply('Запрос остановлен до отправки Codex.', true); this.currentReply = undefined; return; }
     if (this.reportReset) { await reply('Начат новый диалог Codex с сохранённой краткой сводкой проекта.', false); this.reportReset = false; }
     if (this.reportInterrupted) { await reply('Предыдущий ход был прерван перезапуском. Проверю состояние операций перед новым строительством.', false); this.reportInterrupted = false; }
-    this.active = true; this.buffer = ''; this.finalText = ''; this.sentChars = 0;
-    const prefix = this.firstPrompt ? `${INSTRUCTIONS}\n${this.summary ? `Previous compact summary (historical, verify world): ${this.summary}\n` : ''}\nPlayer request:\n` : '';
+    this.active = true; this.buffer = ''; this.finalText = ''; this.sentChars = 0; this.delivery = Promise.resolve(); this.minecraftCalls.clear();
+    const prefix = (this.firstPrompt || this.instructionsHash !== INSTRUCTIONS_HASH) ? `${INSTRUCTIONS}\n${this.summary ? `Previous compact summary (historical, verify world): ${this.summary}\n` : ''}\nPlayer request:\n` : '';
     await this.save(true);
     const timeout = setTimeout(() => { void this.cancel().catch(() => this.close()); }, this.options.timeoutMs ?? 15 * 60_000);
     try {
+      const startupError = this.mcpStartupError();
+      if (startupError) throw startupError;
       const result = await this.connection!.agent.request('session/prompt', { sessionId: this.sessionId!, prompt: [{ type: 'text', text: `${prefix}${text}` }] });
+      const mcpError = this.mcpStartupError();
+      if (mcpError) throw mcpError;
       this.firstPrompt = false;
+      this.instructionsHash = INSTRUCTIONS_HASH;
       this.cancelled ||= result.stopReason === 'cancelled';
       this.summary = `Last player request: ${text.slice(0,2000)}\nLast agent response: ${this.finalText.slice(0,3000)}`;
       await this.save(false);
+      const lateMcpError = this.mcpStartupError();
+      if (lateMcpError) throw lateMcpError;
       await this.flush(true);
+    } catch (error) {
+      const mcpError = this.mcpStartupError();
+      if (mcpError) {
+        await this.delivery;
+        await reply(MCP_STARTUP_MESSAGE, false, true);
+        throw mcpError;
+      }
+      throw error;
     } finally { clearTimeout(timeout); this.active = false; this.currentReply = undefined; }
   }
   async cancel(): Promise<void> {
@@ -164,7 +244,7 @@ export class CodexSession implements AgentSession {
   }
   private async save(interrupted: boolean): Promise<void> {
     const temp = `${this.stateFile}.tmp`;
-    await writeFile(temp, JSON.stringify({ sessionId: this.sessionId, summary: this.summary, interrupted }), { mode: 0o600 });
+    await writeFile(temp, JSON.stringify({ sessionId: this.sessionId, summary: this.summary, interrupted, instructionsHash: this.instructionsHash }), { mode: 0o600 });
     await rename(temp, this.stateFile);
   }
   close(): void {
@@ -176,6 +256,42 @@ export class CodexSession implements AgentSession {
     }
     this.child = undefined; this.sessionId = undefined;
   }
+}
+
+/** Keep unfinished words until more tokens arrive; never emit a token on a timer. */
+function chatMessages(buffer: string, done: boolean): { messages: string[]; remainder: string } {
+  let text = buffer.replace(/[\u0000-\u0009\u000b-\u001f\u007f§]/g, ' ').trimStart();
+  const messages: string[] = [];
+  while (text) {
+    const limit = safeTextEnd(text, 240);
+    // A following separator confirms the sentence boundary. A punctuation token
+    // alone may still be followed by closing quotes or another punctuation mark.
+    const sentence = /[.!?…]["'»”\])]*(?=\s)|\n/u.exec(text);
+    let end = sentence ? sentence.index + sentence[0].length : 0;
+    if (!end || end > limit) {
+      if (text.length <= limit) {
+        if (!done) break;
+        end = text.length;
+      } else {
+        end = 0;
+        for (let i = limit; i > 0; i--) {
+          if (/\s/u.test(text[i]!)) { end = i; break; }
+        }
+        if (!end) end = limit; // A single overlong word still needs a bounded message.
+      }
+    }
+    const message = text.slice(0, end).replace(/\s+/gu, ' ').trim();
+    text = text.slice(end).trimStart();
+    if (message) messages.push(message);
+  }
+  return { messages, remainder: text };
+}
+
+function safeTextEnd(text: string, max: number): number {
+  let end = Math.min(text.length, max);
+  const last = text.charCodeAt(end - 1);
+  if (end < text.length && last >= 0xd800 && last <= 0xdbff) end--;
+  return end;
 }
 
 function terminateAgentTree(child: ChildProcessWithoutNullStreams, signal: NodeJS.Signals): void {

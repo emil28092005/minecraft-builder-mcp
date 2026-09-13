@@ -22,6 +22,9 @@ def main():
     except (OSError, ValueError):
         raise SystemExit('Cannot read a valid camera token/port from the private Paper config.')
     environment = dict(os.environ, MCB_CAMERA_TOKEN=token, MCB_CAMERA_PORT=str(port))
+    auto = re.search(r'^camera-auto-connect:[ \t]*[\'\"]?(127\.0\.0\.1:[0-9]{1,5})[\'\"]?[ \t]*$', data, re.M)
+    if auto:
+        environment['MCB_CAMERA_AUTO_CONNECT'] = auto.group(1)
     os.execvpe(sys.argv[1], sys.argv[1:], environment)
 
 if __name__ == '__main__':

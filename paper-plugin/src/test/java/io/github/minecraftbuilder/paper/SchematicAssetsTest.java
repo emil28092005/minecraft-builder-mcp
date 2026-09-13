@@ -76,10 +76,10 @@ class SchematicAssetsTest {
         assertEquals(expected, assets.read(exported.assetId(), ZERO, 0));
     }
 
-    @Test void rejectsSparseSnapshotUnsupportedBlocksAndUnrepresentableOrigin() throws Exception {
+    @Test void rejectsSparseSnapshotMalformedBlocksAndUnrepresentableOrigin() throws Exception {
         SchematicAssets assets = new SchematicAssets(root);
         assertThrows(IOException.class, () -> assets.exportSnapshot("Gap", Map.of(ZERO, STONE, new BlockPos(2, 0, 0), STONE), ZERO, 5000));
-        assertThrows(IOException.class, () -> assets.exportSnapshot("Chest", Map.of(ZERO, "minecraft:chest"), ZERO, 5000));
+        assertThrows(IOException.class, () -> assets.exportSnapshot("Chest", Map.of(ZERO, "minecraft:chest{Items:[]}"), ZERO, 5000));
         assertThrows(IOException.class, () -> assets.exportSnapshot("Offset", Map.of(new BlockPos(Integer.MIN_VALUE, 0, 0), STONE), new BlockPos(Integer.MAX_VALUE, 0, 0), 5000));
         assertEquals(0, assets.list().size());
     }
@@ -156,9 +156,21 @@ class SchematicAssetsTest {
         assertThrows(IOException.class, () -> SchematicAssets.rotateState("minecraft:oak_stairs", 90));
         assertThrows(IOException.class, () -> SchematicAssets.rotateState("minecraft:oak_log", 90));
         assertThrows(IOException.class, () -> SchematicAssets.rotateState("minecraft:oak_log[axis=x,axis=z]", 0));
-        assertThrows(IOException.class, () -> SchematicAssets.rotateState("minecraft:oak_stairs[facing=up]", 0));
-        assertThrows(IOException.class, () -> SchematicAssets.rotateState("minecraft:oak_slab[type=top,waterlogged=true]", 0));
+        assertEquals("minecraft:oak_slab[type=top,waterlogged=true]", SchematicAssets.rotateState("minecraft:oak_slab[type=top,waterlogged=true]", 0));
         assertThrows(IOException.class, () -> SchematicAssets.rotateState("minecraft:stone[rotation=4]", 90));
+    }
+    @Test void delegatesNewMaterialValidationAndRotationToRuntimeCodec() throws Exception {
+        List<Integer> rotations=new ArrayList<>();
+        SchematicAssets dynamic=new SchematicAssets(root.resolve("dynamic"),(state,degrees)->{
+            rotations.add(degrees);
+            if(!state.startsWith("minecraft:cherry_trapdoor"))throw new IOException("Unknown runtime block");
+            return degrees==90?state.replace("facing=north","facing=east"):state;
+        });
+        String trapdoor="minecraft:cherry_trapdoor[facing=north,half=bottom,open=true,powered=false,waterlogged=true]";
+        var asset=dynamic.exportSnapshot("New palette",Map.of(ZERO,trapdoor),ZERO,5000);
+        assertEquals(trapdoor.replace("facing=north","facing=east"),dynamic.read(asset.assetId(),ZERO,90).get(ZERO));
+        assertTrue(rotations.contains(90));
+        assertThrows(IOException.class,()->dynamic.exportSnapshot("Invalid",Map.of(ZERO,"minecraft:unknown_block"),ZERO,5000));
     }
 
     @Test void metadataAndPlacementRejectFutureDataVersionOnTheActualRead() throws Exception {

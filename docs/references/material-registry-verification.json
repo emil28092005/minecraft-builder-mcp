@@ -1,0 +1,105 @@
+{
+  "verified_at": "2026-09-13T13:47:22.221969+00:00",
+  "server_version": "26.2-123-5001879 (MC: 26.2)",
+  "catalog": {
+    "items": 1537,
+    "search_default_limit": 16,
+    "blocks": 1196,
+    "version": "00474abd322518089309784c",
+    "materials": 1691,
+    "search_max_limit": 32
+  },
+  "registry_probe": {
+    "catalog_described": 1196,
+    "max_description_bytes": 682,
+    "total": 1196,
+    "passed": 1196,
+    "entity_defaults": 186,
+    "property_cases": 5392,
+    "fresh_property_passed": 5392,
+    "same_material_property_passed": 5392,
+    "private_undo_passed": 5392,
+    "anchor_restored": true,
+    "failure_count": 0
+  },
+  "scope": "All block defaults and independent property variants; not the Cartesian product or later simulation effects.",
+  "live_integration": {
+    "phase": "complete",
+    "checks": [
+      "bounded search/pagination",
+      "property domains",
+      "item-only distinction",
+      "new blocks and fluids apply/undo",
+      "paired doors",
+      "private block-entity digests",
+      "same-material inventory preservation",
+      "manual-content stale snapshot and apply conflict",
+      "no inventory drops",
+      "schematic new-material native rotation",
+      "schematic block-entity export rejection",
+      "complete chest/sign/pot undo after Paper restart"
+    ],
+    "catalog_summary_bytes": 130
+  },
+  "tests": {
+    "maven": {
+      "world-core": {
+        "tests": 76,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "paper-plugin": {
+        "tests": 43,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "terrain-world-plugin": {
+        "tests": 26,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "bridge": {
+      "tests": 47,
+      "failures": 0
+    }
+  },
+  "deployment": {
+    "project": "shacraft-lobby-v2",
+    "scope_and_history_preserved": true,
+    "plugin_sha256": "7cb8abcc3e8127d60cbdb8925b531bfef856fe2dc4abdef9cc6191c5c715fc4d",
+    "mcp": {
+      "timestamp": "2026-09-13T13:45:31.378Z",
+      "tool_count": 19,
+      "checks": [
+        {
+          "tool": "project_context",
+          "bytes": 4840,
+          "catalog": {
+            "materials": 1691,
+            "version": "00474abd322518089309784c",
+            "blocks": 1196,
+            "search_default_limit": 16,
+            "items": 1537,
+            "search_max_limit": 32
+          },
+          "project_id": "shacraft-lobby-v2"
+        },
+        {
+          "tool": "material_search",
+          "bytes": 374
+        },
+        {
+          "tool": "material_describe",
+          "bytes": 324
+        }
+      ]
+    },
+    "chat_bridge_restarted": true,
+    "chatgpt_login_preserved": true,
+    "pre_upgrade_backup": true
+  }
+}

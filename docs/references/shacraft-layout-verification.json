@@ -1,0 +1,16 @@
+{
+  "world": "shacraft_lobby_v2",
+  "source": "live Paper surface maps + bounded RPC water reads",
+  "verified_surface_columns": 589824,
+  "surface_mismatches": 0,
+  "unique_marker_blocks": 16967,
+  "planned_writes": 17040,
+  "original_water_columns": 42399,
+  "water_columns_obscured_by_markers": 932,
+  "water_obscured_by_markers_verified_intact": true,
+  "height_unchanged_columns": 587098,
+  "capture_started_at": "2026-09-13T01:03:10.136933937Z",
+  "capture_finished_at": "2026-09-13T01:05:10.066341053Z",
+  "atomic_snapshot": false,
+  "note": "World edits were idle during each capture. Terrain follows its original heights; raised markers represent future structures, not finished traversable paths."
+}

@@ -1,0 +1,11 @@
+{
+  "elapsed_ms": 274728,
+  "max_surface_y": 204,
+  "min_surface_y": 48,
+  "water_columns": 42399,
+  "mismatches": 0,
+  "chunks": 2304,
+  "recipe_id": "fed10bf28fa544e7dba08d10c76a1130c67292856999b06a9fd672feeed39296",
+  "verified_columns": 589824,
+  "world": "shacraft_lobby_v2"
+}

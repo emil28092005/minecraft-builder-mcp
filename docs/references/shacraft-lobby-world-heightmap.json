@@ -1,0 +1,35 @@
+{
+  "note": "Target surface only; no live world reads. Bounds clip writes, not height calculations. Cache holds 32 recipes until restart; save the recipe to regenerate the same ID.",
+  "world_verified": false,
+  "tile_budget": 4096,
+  "sampled_height_min": 22,
+  "tile_count": 27648,
+  "mode": "sculpt",
+  "status": "completed",
+  "tile_order": "x_then_z_then_y",
+  "tile_edge": 16,
+  "bounds": {
+    "worldId": "terrain",
+    "min": {
+      "x": -384,
+      "y": 16,
+      "z": -384
+    },
+    "max": {
+      "x": 383,
+      "y": 207,
+      "z": 383
+    }
+  },
+  "sampled_height_max": 203,
+  "terrain_id": "b013cd330993b262ed0192659c9276af33e1c6fdb749a02ad332086a6d99e56a",
+  "sample_grid": {
+    "height": 256,
+    "width": 256
+  },
+  "legend": "Dark green \u003d low; pale stone \u003d high; pink \u003d preserved at sampled surface",
+  "kind": "terrain_heightmap_preview",
+  "clipped_samples": 0,
+  "mimeType": "image/png",
+  "orientation": "north (-Z) up; east (+X) right"
+}

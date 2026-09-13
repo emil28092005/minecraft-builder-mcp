@@ -1,0 +1,20 @@
+{
+  "world_applied": false,
+  "water_level": 48,
+  "fields": [
+    {
+      "name": "V1 \u2014 rectangular platforms",
+      "min_ground_y": 22.0,
+      "max_ground_y": 203.0,
+      "water_columns": 59609,
+      "slope_p95": 3.0
+    },
+    {
+      "name": "Study \u2014 ridges, soft hills, winding water",
+      "min_ground_y": 31.35810089111328,
+      "max_ground_y": 204.61903381347656,
+      "water_columns": 42399,
+      "slope_p95": 3.5214755985851562
+    }
+  ]
+}

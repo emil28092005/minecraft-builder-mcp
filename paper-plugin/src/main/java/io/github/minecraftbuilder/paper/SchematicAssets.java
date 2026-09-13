@@ -23,19 +23,11 @@ public final class SchematicAssets {
     private static final int MAX_COMPRESSED = 1_048_576, MAX_NBT = 4_194_304;
     private static final Set<String> ROOT_FIELDS = Set.of("Version", "DataVersion", "Width", "Height", "Length",
         "Offset", "PaletteMax", "Palette", "BlockData", "BlockEntities", "Entities", "Metadata");
-    // Deliberately mirrors the prototype's small server policy. The server validates states again on import.
-    private static final Set<String> MATERIALS = Set.of("air", "stone", "cobblestone", "mossy_cobblestone",
-        "stone_bricks", "mossy_stone_bricks", "cracked_stone_bricks", "chiseled_stone_bricks", "smooth_stone",
-        "granite", "polished_granite", "diorite", "polished_diorite", "andesite", "polished_andesite",
-        "deepslate", "cobbled_deepslate", "polished_deepslate", "deepslate_bricks", "deepslate_tiles",
-        "bricks", "quartz_block", "quartz_pillar", "smooth_quartz", "sandstone", "cut_sandstone", "smooth_sandstone",
-        "red_sandstone", "terracotta", "white_terracotta", "black_terracotta", "orange_terracotta",
-        "white_concrete", "gray_concrete", "black_concrete", "glass", "tinted_glass", "obsidian", "dirt",
-        "grass_block", "bedrock", "oak_planks", "spruce_planks", "birch_planks", "dark_oak_planks",
-        "oak_log", "spruce_log", "birch_log", "dark_oak_log", "stripped_oak_log", "stripped_spruce_log",
-        "stone_brick_stairs", "cobblestone_stairs", "oak_stairs", "spruce_stairs", "deepslate_tile_stairs",
-        "stone_brick_slab", "cobblestone_slab", "oak_slab", "spruce_slab", "smooth_stone_slab");
     private final Path root;
+    private final StateTransformer states;
+
+    @FunctionalInterface
+    public interface StateTransformer { String transform(String state, int degrees) throws IOException; }
 
     public record Asset(String assetId, String name, int width, int height, int length, int blockCount,
                         int dataVersion, BlockPos offset, String sha256, long bytes) { }
@@ -44,7 +36,11 @@ public final class SchematicAssets {
     private record Tag(int type, Object value) { }
     private record TagList(int elementType, List<Tag> values) { }
 
-    public SchematicAssets(Path root) throws IOException {
+    public SchematicAssets(Path root) throws IOException { this(root, SchematicAssets::rotateState); }
+
+    public SchematicAssets(Path root, StateTransformer states) throws IOException {
+        Objects.requireNonNull(states);
+        this.states = (state,degrees) -> states.transform(rotateState(state,0),degrees);
         this.root = root.toAbsolutePath().normalize();
         rejectSymlinkParents();
         Files.createDirectories(this.root);
@@ -75,7 +71,7 @@ public final class SchematicAssets {
         LinkedHashMap<String, Integer> palette = new LinkedHashMap<>();
         ByteArrayOutputStream data = new ByteArrayOutputStream();
         for (int y = 0; y < height; y++) for (int z = 0; z < length; z++) for (int x = 0; x < width; x++) {
-            String state = rotateState(blocks.get(new BlockPos(minX + x, minY + y, minZ + z)), 0);
+            String state = states.transform(blocks.get(new BlockPos(minX + x, minY + y, minZ + z)), 0);
             int index = palette.computeIfAbsent(state, ignored -> palette.size());
             writeVarInt(data, index);
         }
@@ -128,7 +124,7 @@ public final class SchematicAssets {
                 int dx = Math.addExact(x, value.offset.x()), dy = Math.addExact(y, value.offset.y()), dz = Math.addExact(z, value.offset.z());
                 for (int turn = 0; turn < rotation90 / 90; turn++) { int oldX = dx; dx = Math.negateExact(dz); dz = oldX; }
                 BlockPos at = target.add(new BlockPos(dx, dy, dz));
-                result.put(at, rotateState(value.blocks.get(index++), rotation90));
+                result.put(at, states.transform(value.blocks.get(index++), rotation90));
             }
         } catch (ArithmeticException e) { throw new IOException("Placement overflows integer coordinates", e); }
         return Collections.unmodifiableMap(result);
@@ -188,42 +184,30 @@ public final class SchematicAssets {
             throw new IOException("Asset name must contain 1..64 printable characters");
     }
 
-    /** Only recognised schemas rotate: no guessing about unknown direction-like properties. */
+    /** Offline syntax codec; runtime integration injects registry validation and native rotation. */
     static String rotateState(String state, int degrees) throws IOException {
-        if (state == null || state.length() > 512 || !state.matches("minecraft:[a-z0-9_]+(?:\\[[a-z0-9_=,]+\\])?"))
+        if (state == null || state.length() > 1024 || !state.matches("minecraft:[a-z0-9_]+(?:\\[[a-z0-9_=,]+\\])?"))
             throw new IOException("Invalid vanilla block state");
         int bracket = state.indexOf('[');
         String id = state.substring(10, bracket < 0 ? state.length() : bracket);
-        if (!MATERIALS.contains(id)) throw new IOException("Unsupported schematic block: minecraft:" + id);
         TreeMap<String, String> properties = new TreeMap<>();
         if (bracket >= 0) for (String property : state.substring(bracket + 1, state.length() - 1).split(",")) {
             String[] pair = property.split("=", -1);
             if (pair.length != 2 || properties.put(pair[0], pair[1]) != null) throw new IOException("Invalid or duplicate block property");
         }
-        Set<String> allowed = id.endsWith("_stairs") ? Set.of("facing", "half", "shape", "waterlogged")
-            : id.endsWith("_slab") ? Set.of("type", "waterlogged")
-            : id.endsWith("_log") || id.equals("quartz_pillar") || id.equals("deepslate") ? Set.of("axis")
-            : id.equals("grass_block") ? Set.of("snowy") : Set.of();
-        if (!allowed.containsAll(properties.keySet())) throw new IOException("Unsupported block properties for minecraft:" + id);
-        for (var property : properties.entrySet()) {
-            Set<String> values = switch (property.getKey()) {
-                case "facing" -> Set.of("north", "east", "south", "west");
-                case "axis" -> Set.of("x", "y", "z");
-                case "half" -> Set.of("top", "bottom");
-                case "shape" -> Set.of("straight", "inner_left", "inner_right", "outer_left", "outer_right");
-                case "type" -> Set.of("top", "bottom", "double");
-                case "waterlogged" -> Set.of("false");
-                case "snowy" -> Set.of("true", "false");
-                default -> Set.of();
-            };
-            if (!values.contains(property.getValue())) throw new IOException("Unsupported block property value");
-        }
+        if (!Set.of(0,90,180,270).contains(degrees)) throw new IOException("Invalid rotation");
+        if (degrees == 0) return "minecraft:" + id + (properties.isEmpty() ? "" : "[" + String.join(",", properties.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toList()) + "]");
+        Set<String> allowed = Set.of("facing","axis","half","shape","type","waterlogged","snowy");
+        if (!allowed.containsAll(properties.keySet())) throw new IOException("Runtime block rotation required for these properties");
+        if(properties.containsKey("shape") && !Set.of("straight","inner_left","inner_right","outer_left","outer_right").contains(properties.get("shape")))
+            throw new IOException("Runtime block rotation required for this shape");
         if (degrees != 0 && id.endsWith("_stairs") && !properties.containsKey("facing"))
             throw new IOException("Rotation requires explicit stairs facing");
-        if (degrees != 0 && allowed.contains("axis") && !properties.containsKey("axis"))
+        if (degrees != 0 && (id.endsWith("_log") || id.equals("quartz_pillar") || id.equals("deepslate")) && !properties.containsKey("axis"))
             throw new IOException("Rotation requires explicit block axis");
-        if (properties.containsKey("facing")) {
+        if (properties.containsKey("facing") && !Set.of("up","down").contains(properties.get("facing"))) {
             List<String> faces = List.of("north", "east", "south", "west");
+            if (!faces.contains(properties.get("facing"))) throw new IOException("Invalid facing");
             properties.put("facing", faces.get((faces.indexOf(properties.get("facing")) + degrees / 90) % 4));
         }
         if (degrees % 180 != 0 && properties.containsKey("axis") && !properties.get("axis").equals("y"))
@@ -260,7 +244,7 @@ public final class SchematicAssets {
     private static void writeVarInt(OutputStream out, int value) throws IOException {
         do { int next = value & 127; value >>>= 7; out.write(next | (value != 0 ? 128 : 0)); } while (value != 0);
     }
-    private static Decoded decode(byte[] compressed) throws IOException {
+    private Decoded decode(byte[] compressed) throws IOException {
         byte[] raw;
         try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(compressed))) {
             raw = gzip.readNBytes(MAX_NBT + 1);
@@ -299,7 +283,7 @@ public final class SchematicAssets {
             for (var entry : paletteTags.entrySet()) {
                 if (entry.getValue().type != 3) throw new IOException("Palette indices must be integers");
                 int id = (Integer) entry.getValue().value;
-                String state = rotateState(entry.getKey(), 0);
+                String state = states.transform(entry.getKey(), 0);
                 if (id < 0 || id >= paletteMax || palette.put(id, state) != null) throw new IOException("Invalid or duplicate palette index");
             }
             byte[] blockData = (byte[]) required(tags, "BlockData", 7).value;

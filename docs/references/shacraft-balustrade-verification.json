@@ -1,0 +1,695 @@
+{
+  "version": 1,
+  "scope": {
+    "project_id": "shacraft-lobby-v2",
+    "world_id": "6679385a-b67f-4e88-b6be-33836ced6f2d",
+    "world_epoch": "b7626ccf-9c75-4b00-9cf3-b8a42231c754"
+  },
+  "mode": "actual_after_snapshot",
+  "passed": true,
+  "world_edits": 0,
+  "desired_blocks": 710,
+  "guard": {
+    "passed": true,
+    "columns": 302,
+    "piers": 46,
+    "cardinal_components": [
+      31,
+      46,
+      71,
+      74,
+      80
+    ],
+    "grounded_footings": 22,
+    "adjacent_road_rails": 6,
+    "failures": []
+  },
+  "protected_road_columns": 2927,
+  "protection_failures": [],
+  "preserved_fixture_states": 1172,
+  "lost_fixtures": [],
+  "fixtures": {
+    "passed": true,
+    "checked": {
+      "leaves": 537,
+      "lanterns": 16,
+      "flowers": 258,
+      "rooted_trees": 12,
+      "root_connected_logs": 73
+    },
+    "failures": []
+  },
+  "walking": {
+    "checked_points": 4815,
+    "checked_route_edges": 0,
+    "failures": [],
+    "passed": true,
+    "scope": {
+      "project_id": "shacraft-lobby-v2",
+      "world_id": "6679385a-b67f-4e88-b6be-33836ced6f2d",
+      "world_epoch": "b7626ccf-9c75-4b00-9cf3-b8a42231c754"
+    },
+    "note": "Observed surface samples and vertical headroom; full cubes, slabs and explicit straight bottom-stair samples. Stair samples are a surface profile, not a full player-width collision simulation. Cached snapshot is not a live re-read."
+  },
+  "navigation": {
+    "version": 1,
+    "source": {
+      "x": 0,
+      "z": 9
+    },
+    "world_edits": 0,
+    "method": "Four quarter-center surface samples per clear cell; cardinal half-block BFS, rise/drop <= 0.5 block.",
+    "limitations": "Planned surface topology only. No headroom, body-width collision, material state or live-world verification. Width checks are cardinal cross-sections using the dominant local tangent; full declared masks are also checked.",
+    "geometry_sha256": "4a2b951946c91a09dcef9606bfebd8eba51c34f21e827b019dc0a5f768cf4148",
+    "planned_columns": 16309,
+    "clear_columns": 14338,
+    "surface_samples": 57352,
+    "reachable_samples": 57352,
+    "unreachable_clear_columns": [],
+    "unreachable_by_group": {},
+    "station": {
+      "name": "clock-station",
+      "x": -6,
+      "z": -105,
+      "surface_samples": 4,
+      "reachable_samples": 4,
+      "passed": true,
+      "shortest_surface_route_blocks": 119.0
+    },
+    "routes": [
+      {
+        "id": "station-axis",
+        "passed": true,
+        "declared_clear_width": 9,
+        "corridor_columns": 593,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 486,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 47,
+        "minimum_structural_cross_section": 9,
+        "minimum_clear_cross_section": 9,
+        "minimum_reachable_cross_section": 9,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "station-axis:start",
+            "x": 0,
+            "z": -37,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 45.5
+          },
+          {
+            "name": "station-axis:end",
+            "x": -6,
+            "z": -77,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 91.0
+          }
+        ]
+      },
+      {
+        "id": "south-axis-local",
+        "passed": true,
+        "declared_clear_width": 9,
+        "corridor_columns": 685,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 565,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 59,
+        "minimum_structural_cross_section": 9,
+        "minimum_clear_cross_section": 9,
+        "minimum_reachable_cross_section": 9,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0.5,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "south-axis-local:start",
+            "x": 0,
+            "z": 57,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 48.0
+          },
+          {
+            "name": "south-axis-local:end",
+            "x": 1,
+            "z": 110,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 102.0
+          }
+        ]
+      },
+      {
+        "id": "portal-radial-local",
+        "passed": true,
+        "declared_clear_width": 7,
+        "corridor_columns": 531,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 376,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 70,
+        "minimum_structural_cross_section": 7,
+        "minimum_clear_cross_section": 7,
+        "minimum_reachable_cross_section": 7,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0.5,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "portal-radial-local:start",
+            "x": -35,
+            "z": -14,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 57.0
+          },
+          {
+            "name": "portal-radial-local:end",
+            "x": -72,
+            "z": -46,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 126.0
+          }
+        ]
+      },
+      {
+        "id": "lake-radial-local",
+        "passed": true,
+        "declared_clear_width": 5,
+        "corridor_columns": 403,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 297,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 63,
+        "minimum_structural_cross_section": 5,
+        "minimum_clear_cross_section": 5,
+        "minimum_reachable_cross_section": 5,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0.5,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "lake-radial-local:start",
+            "x": -42,
+            "z": 18,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 50.5
+          },
+          {
+            "name": "lake-radial-local:end",
+            "x": -90,
+            "z": 32,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 112.5
+          }
+        ]
+      },
+      {
+        "id": "east-radial-local",
+        "passed": true,
+        "declared_clear_width": 7,
+        "corridor_columns": 451,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 341,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 49,
+        "minimum_structural_cross_section": 7,
+        "minimum_clear_cross_section": 7,
+        "minimum_reachable_cross_section": 7,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0.5,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "east-radial-local:start",
+            "x": 42,
+            "z": 16,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 49.0
+          },
+          {
+            "name": "east-radial-local:end",
+            "x": 82,
+            "z": 8,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 90.5
+          }
+        ]
+      },
+      {
+        "id": "ring-northwest-local",
+        "passed": true,
+        "declared_clear_width": 7,
+        "corridor_columns": 468,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 350,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 53,
+        "minimum_structural_cross_section": 7,
+        "minimum_clear_cross_section": 7,
+        "minimum_reachable_cross_section": 7,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0.5,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "ring-northwest-local:start",
+            "x": -40,
+            "z": -65,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 113.0
+          },
+          {
+            "name": "ring-northwest-local:end",
+            "x": -80,
+            "z": -77,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 165.0
+          }
+        ]
+      },
+      {
+        "id": "ring-northeast-local",
+        "passed": true,
+        "declared_clear_width": 7,
+        "corridor_columns": 505,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 374,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 60,
+        "minimum_structural_cross_section": 7,
+        "minimum_clear_cross_section": 7,
+        "minimum_reachable_cross_section": 7,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0.5,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "ring-northeast-local:start",
+            "x": 40,
+            "z": -95,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 151.0
+          },
+          {
+            "name": "ring-northeast-local:end",
+            "x": 82,
+            "z": -78,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 210.0
+          }
+        ]
+      },
+      {
+        "id": "station-entrance-stair",
+        "passed": true,
+        "declared_clear_width": 21,
+        "corridor_columns": 161,
+        "missing_corridor_columns": [],
+        "declared_clear_columns": 147,
+        "nonclear_declared_columns": [],
+        "unreachable_declared_columns": [],
+        "cross_sections": 7,
+        "minimum_structural_cross_section": 21,
+        "minimum_clear_cross_section": 21,
+        "minimum_reachable_cross_section": 21,
+        "narrow_cross_sections": [],
+        "centerline_invalid_steps": [],
+        "centerline_maximum_boundary_step": 0.5,
+        "centerline_jumps": [],
+        "endpoints": [
+          {
+            "name": "station-entrance-stair:start",
+            "x": -6,
+            "z": -77,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 91.0
+          },
+          {
+            "name": "station-entrance-stair:end",
+            "x": -6,
+            "z": -83,
+            "surface_samples": 4,
+            "reachable_samples": 4,
+            "passed": true,
+            "shortest_surface_route_blocks": 97.0
+          }
+        ]
+      }
+    ],
+    "passed": true,
+    "bench_access": [
+      {
+        "name": "bench-access--31-1",
+        "x": -31,
+        "z": 1,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 38.0
+      },
+      {
+        "name": "bench-access--31-2",
+        "x": -31,
+        "z": 2,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 37.0
+      },
+      {
+        "name": "bench-access--31-3",
+        "x": -31,
+        "z": 3,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 36.0
+      },
+      {
+        "name": "bench-access--23-32",
+        "x": -23,
+        "z": 32,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 45.5
+      },
+      {
+        "name": "bench-access--23-33",
+        "x": -23,
+        "z": 33,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 46.5
+      },
+      {
+        "name": "bench-access--23-34",
+        "x": -23,
+        "z": 34,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 47.5
+      },
+      {
+        "name": "bench-access--22-33",
+        "x": -22,
+        "z": 33,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 45.5
+      },
+      {
+        "name": "bench-access--22-34",
+        "x": -22,
+        "z": 34,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 46.5
+      },
+      {
+        "name": "bench-access--21-34",
+        "x": -21,
+        "z": 34,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 45.5
+      },
+      {
+        "name": "bench-access--18--16",
+        "x": -18,
+        "z": -16,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 42.0
+      },
+      {
+        "name": "bench-access--18--15",
+        "x": -18,
+        "z": -15,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 41.0
+      },
+      {
+        "name": "bench-access--18--14",
+        "x": -18,
+        "z": -14,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 40.0
+      },
+      {
+        "name": "bench-access--17--16",
+        "x": -17,
+        "z": -16,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 41.0
+      },
+      {
+        "name": "bench-access--17--15",
+        "x": -17,
+        "z": -15,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 40.0
+      },
+      {
+        "name": "bench-access--16--16",
+        "x": -16,
+        "z": -16,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 40.0
+      },
+      {
+        "name": "bench-access--16--15",
+        "x": -16,
+        "z": -15,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 39.0
+      },
+      {
+        "name": "bench-access-16--16",
+        "x": 16,
+        "z": -16,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 40.5
+      },
+      {
+        "name": "bench-access-16--15",
+        "x": 16,
+        "z": -15,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 39.5
+      },
+      {
+        "name": "bench-access-17--16",
+        "x": 17,
+        "z": -16,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 41.5
+      },
+      {
+        "name": "bench-access-17--15",
+        "x": 17,
+        "z": -15,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 40.5
+      },
+      {
+        "name": "bench-access-18--16",
+        "x": 18,
+        "z": -16,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 42.5
+      },
+      {
+        "name": "bench-access-18--15",
+        "x": 18,
+        "z": -15,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 41.5
+      },
+      {
+        "name": "bench-access-18--14",
+        "x": 18,
+        "z": -14,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 40.5
+      },
+      {
+        "name": "bench-access-21-34",
+        "x": 21,
+        "z": 34,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 46.0
+      },
+      {
+        "name": "bench-access-22-33",
+        "x": 22,
+        "z": 33,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 46.0
+      },
+      {
+        "name": "bench-access-22-34",
+        "x": 22,
+        "z": 34,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 47.0
+      },
+      {
+        "name": "bench-access-23-32",
+        "x": 23,
+        "z": 32,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 46.0
+      },
+      {
+        "name": "bench-access-23-33",
+        "x": 23,
+        "z": 33,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 47.0
+      },
+      {
+        "name": "bench-access-23-34",
+        "x": 23,
+        "z": 34,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 48.0
+      },
+      {
+        "name": "bench-access-31-1",
+        "x": 31,
+        "z": 1,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 38.5
+      },
+      {
+        "name": "bench-access-31-2",
+        "x": 31,
+        "z": 2,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 37.5
+      },
+      {
+        "name": "bench-access-31-3",
+        "x": 31,
+        "z": 3,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 36.5
+      }
+    ]
+  },
+  "volume": {
+    "passed": true,
+    "outside_desired_voxels": 555598,
+    "desired_voxels": 710,
+    "mismatch_examples": [],
+    "scope_note": "Every voxel inside the supplied before snapshot; no claim for unobserved exterior voxels."
+  },
+  "note": "Point-sampled body headroom and navigation; not a full moving-player collision simulation.",
+  "input_sha256": {
+    "layout": "6ec0e65027080207dc8e5f7b19afaa7b33f6ddb723de5c3632cc6097592da581",
+    "metadata": "242507f39a354f04281bdf4a32a2fe05d9c144af9d1b7c7e7e8ddecc17976114",
+    "garden_plan": "699060010db084dc05c47400572ac4440784d1a0c3dbd877122decd183048923",
+    "garden_metadata": "400f672864117b62ed173600932ca04ab15a0c548587bb3d39f34eaa91484e89",
+    "garden_walk": "453c5ee1e699a59be845db22abc5e481915768ab229a79c0cc6019d8b3e39d0d",
+    "navigation": "1baf3c4ef2c1ddfca22240395fcde97b5210d97c9afe5cb2b6c3275154cfe044",
+    "before": "3172d03627e625d759a3b9ce881282e26db2926c35dd68ac0036047ae33c3488",
+    "after": "c77e8f953f257822f6f6489d397ab39f40459c18183743dbdbea3e168a193c65"
+  }
+}

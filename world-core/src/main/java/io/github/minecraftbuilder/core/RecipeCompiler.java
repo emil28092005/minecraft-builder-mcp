@@ -117,7 +117,7 @@ public final class RecipeCompiler {
     }
     private static String block(JsonObject object) {
         String block = string(object, "block");
-        if (block.length() > 512 || !block.matches("minecraft:[a-z0-9_]+(?:\\[[a-z0-9_=,]+\\])?"))
+        if (block.length() > 1024 || !block.matches("minecraft:[a-z0-9_]+(?:\\[[a-z0-9_=,]+\\])?"))
             throw new IllegalArgumentException("Expected a Minecraft block state string");
         return block;
     }

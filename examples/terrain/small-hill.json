@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "min": {
+    "x": 0,
+    "y": 80,
+    "z": 0
+  },
+  "max": {
+    "x": 7,
+    "y": 87,
+    "z": 7
+  },
+  "base_height": 82,
+  "seed": 2809,
+  "mode": "sculpt",
+  "noise": {
+    "amplitude": 1,
+    "scale": 12
+  },
+  "palette": {
+    "rock": "minecraft:stone",
+    "soil": "minecraft:dirt",
+    "surface": "minecraft:grass_block",
+    "soil_depth": 3
+  },
+  "features": [
+    {
+      "type": "hill",
+      "center": {
+        "x": 4,
+        "z": 4
+      },
+      "radius": 1,
+      "height": 3,
+      "falloff": 3
+    }
+  ],
+  "preserve": []
+}

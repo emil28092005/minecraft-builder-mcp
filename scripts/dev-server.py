@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -40,8 +41,11 @@ def prepare():
 if __name__=='__main__':
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--run',action='store_true')
+    ap.add_argument('--heap',default='2G',help='Maximum Java heap, e.g. 4G for the large lobby')
     ap.add_argument('--accept-eula',action='store_true',help='Explicitly accept https://www.minecraft.net/eula before starting this private test server')
     args=ap.parse_args()
+    if not re.fullmatch(r'[1-9][0-9]*[MG]', args.heap):
+        ap.error('--heap must be a positive integer followed by M or G')
     server=prepare()
     if args.accept_eula: (server/'eula.txt').write_text('# Accepted explicitly by the operator for this development server.\neula=true\n')
     if args.run:
@@ -49,4 +53,4 @@ if __name__=='__main__':
             raise SystemExit('Minecraft EULA acceptance required: https://www.minecraft.net/eula ; review then rerun with --accept-eula if you agree.')
         java=Path(os.environ.get('MCB_JAVA_HOME',str(CACHE/'jdk-25.0.2')))/'bin/java'
         if not java.exists(): raise SystemExit('Run python3 scripts/bootstrap-tools.py first')
-        raise SystemExit(subprocess.call([str(java),'-Dterminal.jline=false','-Dterminal.ansi=false','-Xms512M','-Xmx2G','-jar','paper.jar','--nogui'],cwd=server))
+        raise SystemExit(subprocess.call([str(java),'-Dterminal.jline=false','-Dterminal.ansi=false','-Xms512M','-Xmx'+args.heap,'-jar','paper.jar','--nogui'],cwd=server))

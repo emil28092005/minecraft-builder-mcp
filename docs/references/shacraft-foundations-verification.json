@@ -1,0 +1,551 @@
+{
+  "stage": "02-foundations-zones-01-02",
+  "total_checked_writes": 79081,
+  "journalled_batches": 67,
+  "final_changed_voxels": 78673,
+  "checks": {
+    "surface-verification": {
+      "version": 1,
+      "world": "shacraft_lobby_v2",
+      "scope": {
+        "project_id": "shacraft-lobby-v2",
+        "world_id": "6679385a-b67f-4e88-b6be-33836ced6f2d",
+        "world_epoch": "b7626ccf-9c75-4b00-9cf3-b8a42231c754"
+      },
+      "source": "Full live Paper surface maps plus observed baseline voxels and desired edit overlay",
+      "verified_surface_columns": 589824,
+      "affected_columns": 16901,
+      "outside_edit_columns_verified": 572923,
+      "changed_surface_columns": 16901,
+      "surface_mismatches": 0,
+      "outside_edit_surface_mismatches": 0,
+      "mismatch_examples": [],
+      "original_visible_water_columns": 41467,
+      "visible_water_surface_changes": 0,
+      "water_surface_change_examples": [],
+      "expected_states_checked_against_baseline": 78673,
+      "placed_or_replaced_voxels": 77950,
+      "removed_voxels": 723,
+      "lower_snapshot_voxels_consulted_after_cuts": 12,
+      "observed_water_voxels_replaced": [],
+      "water_preservation_passed": true,
+      "passed": true,
+      "capture_started_at": "2026-09-13T01:47:40.367423160Z",
+      "capture_finished_at": "2026-09-13T01:49:35.666216379Z",
+      "atomic_snapshot": false,
+      "note": "Sequential map captures; edits must be idle during each capture. This checks every visible surface and the observed water blocks in the edit. Hidden untouched blocks outside the voxel survey are not inferred. Live voxel and headroom checks are separate.",
+      "inputs_sha256": {
+        "before_map": "45612085877b44b0fc58a67f3c140049452b3fc8e8798ff816bd368852a2eaa2",
+        "after_map": "b4bc17c20864543fab5b03dd1f6ccecba2b79c261fa45f3c8497f1824fb8ccfa",
+        "baseline_voxels": "d53662eac3c06ed79d86ba5da9ce0e95c32ade146f6eb9f4f30782ec51ae8677",
+        "desired_layout": "22da24b01fa5d14f278253e48d97721ffb5341543b46827c17617020c1b47374"
+      }
+    },
+    "walk-verification": {
+      "checked_points": 15708,
+      "checked_route_edges": 0,
+      "failures": [],
+      "passed": true,
+      "scope": {
+        "project_id": "shacraft-lobby-v2",
+        "world_id": "6679385a-b67f-4e88-b6be-33836ced6f2d",
+        "world_epoch": "b7626ccf-9c75-4b00-9cf3-b8a42231c754"
+      },
+      "note": "Observed surface samples and vertical headroom; full cubes, slabs and explicit straight bottom-stair samples. Stair samples are a surface profile, not a full player-width collision simulation. Cached snapshot is not a live re-read."
+    },
+    "block-verification": {
+      "version": 1,
+      "source": "Complete final observed block-state survey",
+      "scope": {
+        "project_id": "shacraft-lobby-v2",
+        "world_id": "6679385a-b67f-4e88-b6be-33836ced6f2d",
+        "world_epoch": "b7626ccf-9c75-4b00-9cf3-b8a42231c754"
+      },
+      "verified_desired_blocks": 78673,
+      "mismatches": 0,
+      "mismatch_examples": [],
+      "passed": true,
+      "verified_by_desired_material": {
+        "minecraft:deepslate_bricks": 2983,
+        "minecraft:polished_andesite": 2635,
+        "minecraft:stone_brick_stairs": 724,
+        "minecraft:stone": 53085,
+        "minecraft:stone_bricks": 4399,
+        "minecraft:smooth_sandstone": 5776,
+        "minecraft:smooth_stone": 6343,
+        "minecraft:stone_brick_wall": 670,
+        "minecraft:grass_block": 561,
+        "minecraft:air": 723,
+        "minecraft:chiseled_stone_bricks": 27,
+        "minecraft:smooth_stone_slab": 27,
+        "minecraft:lantern": 27,
+        "minecraft:smooth_quartz": 236,
+        "minecraft:green_concrete": 457
+      },
+      "verified_by_group": {
+        "lake-radial-local-foundation": 963,
+        "lake-radial-local-paving": 403,
+        "edge-balustrades": 651,
+        "remove-obsolete-survey": 572,
+        "ring-northwest-local-foundation": 1116,
+        "ring-northwest-local-paving": 468,
+        "ring-northwest-local-clearance": 30,
+        "station-west-pilasters": 184,
+        "clock-station-foundation": 31398,
+        "station-west-arch-stones": 20,
+        "clock-station-paving": 5508,
+        "lamp-piers": 81,
+        "lamps": 27,
+        "station-west-blind-arcade": 146,
+        "portal-radial-local-foundation": 1054,
+        "portal-radial-local-paving": 531,
+        "portal-radial-local-clearance": 219,
+        "station-structural-bands": 256,
+        "lake-radial-local-clearance": 4,
+        "arrival-hex-foundation": 14211,
+        "arrival-hex-paving": 4741,
+        "station-forecourt-foundation": 3113,
+        "station-forecourt-paving": 1298,
+        "clock-station-clearance": 44,
+        "station-entrance-stair-foundation": 418,
+        "station-entrance-stair-paving": 161,
+        "station-forecourt-clearance": 86,
+        "arrival-medallion": 693,
+        "arrival-hex-clearance": 203,
+        "station-axis-foundation": 1166,
+        "station-axis-paving": 582,
+        "station-axis-clearance": 83,
+        "south-axis-local-foundation": 1658,
+        "south-axis-local-paving": 685,
+        "south-axis-local-clearance": 27,
+        "ring-northeast-local-foundation": 2663,
+        "station-ne-connection-foundation": 143,
+        "station-ne-connection-paving": 27,
+        "ring-northeast-local-paving": 505,
+        "east-radial-local-foundation": 1963,
+        "east-radial-local-paving": 451,
+        "ring-northeast-local-clearance": 8,
+        "east-radial-local-clearance": 8,
+        "temporary-bridge-threshold": 86,
+        "temporary-bridge-gates": 19
+      },
+      "desired_layout_sha256": "22da24b01fa5d14f278253e48d97721ffb5341543b46827c17617020c1b47374",
+      "snapshot_started_at": "2026-09-13T01:47:42.024943+00:00",
+      "snapshot_finished_at": "2026-09-13T01:48:27.217492+00:00",
+      "atomic_snapshot": false,
+      "note": "Full block states include slab/stair orientation, waterlogging and other properties. Sequential read snapshot; edits were completed before capture."
+    },
+    "navigation-verification": {
+      "version": 1,
+      "source": {
+        "x": 0,
+        "z": 9
+      },
+      "world_edits": 0,
+      "method": "Four quarter-center surface samples per clear cell; cardinal half-block BFS, rise/drop <= 0.5 block.",
+      "limitations": "Planned surface topology only. No headroom, body-width collision, material state or live-world verification. Width checks are cardinal cross-sections using the dominant local tangent; full declared masks are also checked.",
+      "geometry_sha256": "e5c78e645100261d1720e50ea23eaa65650eb796341facb9a50bed0ab392e736",
+      "planned_columns": 16309,
+      "clear_columns": 15140,
+      "surface_samples": 60560,
+      "reachable_samples": 60560,
+      "unreachable_clear_columns": [],
+      "unreachable_by_group": {},
+      "station": {
+        "name": "clock-station",
+        "x": -6,
+        "z": -105,
+        "surface_samples": 4,
+        "reachable_samples": 4,
+        "passed": true,
+        "shortest_surface_route_blocks": 119.0
+      },
+      "routes": [
+        {
+          "id": "station-axis",
+          "passed": true,
+          "declared_clear_width": 9,
+          "corridor_columns": 593,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 486,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 47,
+          "minimum_structural_cross_section": 9,
+          "minimum_clear_cross_section": 9,
+          "minimum_reachable_cross_section": 9,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "station-axis:start",
+              "x": 0,
+              "z": -37,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 45.5
+            },
+            {
+              "name": "station-axis:end",
+              "x": -6,
+              "z": -77,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 91.0
+            }
+          ]
+        },
+        {
+          "id": "south-axis-local",
+          "passed": true,
+          "declared_clear_width": 9,
+          "corridor_columns": 685,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 565,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 59,
+          "minimum_structural_cross_section": 9,
+          "minimum_clear_cross_section": 9,
+          "minimum_reachable_cross_section": 9,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0.5,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "south-axis-local:start",
+              "x": 0,
+              "z": 57,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 48.0
+            },
+            {
+              "name": "south-axis-local:end",
+              "x": 1,
+              "z": 110,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 102.0
+            }
+          ]
+        },
+        {
+          "id": "portal-radial-local",
+          "passed": true,
+          "declared_clear_width": 7,
+          "corridor_columns": 531,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 376,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 70,
+          "minimum_structural_cross_section": 7,
+          "minimum_clear_cross_section": 7,
+          "minimum_reachable_cross_section": 7,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0.5,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "portal-radial-local:start",
+              "x": -35,
+              "z": -14,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 57.0
+            },
+            {
+              "name": "portal-radial-local:end",
+              "x": -72,
+              "z": -46,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 126.0
+            }
+          ]
+        },
+        {
+          "id": "lake-radial-local",
+          "passed": true,
+          "declared_clear_width": 5,
+          "corridor_columns": 403,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 297,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 63,
+          "minimum_structural_cross_section": 5,
+          "minimum_clear_cross_section": 5,
+          "minimum_reachable_cross_section": 5,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0.5,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "lake-radial-local:start",
+              "x": -42,
+              "z": 18,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 50.5
+            },
+            {
+              "name": "lake-radial-local:end",
+              "x": -90,
+              "z": 32,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 112.5
+            }
+          ]
+        },
+        {
+          "id": "east-radial-local",
+          "passed": true,
+          "declared_clear_width": 7,
+          "corridor_columns": 451,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 341,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 49,
+          "minimum_structural_cross_section": 7,
+          "minimum_clear_cross_section": 7,
+          "minimum_reachable_cross_section": 7,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0.5,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "east-radial-local:start",
+              "x": 42,
+              "z": 16,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 49.0
+            },
+            {
+              "name": "east-radial-local:end",
+              "x": 82,
+              "z": 8,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 90.5
+            }
+          ]
+        },
+        {
+          "id": "ring-northwest-local",
+          "passed": true,
+          "declared_clear_width": 7,
+          "corridor_columns": 468,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 350,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 53,
+          "minimum_structural_cross_section": 7,
+          "minimum_clear_cross_section": 7,
+          "minimum_reachable_cross_section": 7,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0.5,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "ring-northwest-local:start",
+              "x": -40,
+              "z": -65,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 113.0
+            },
+            {
+              "name": "ring-northwest-local:end",
+              "x": -80,
+              "z": -77,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 165.0
+            }
+          ]
+        },
+        {
+          "id": "ring-northeast-local",
+          "passed": true,
+          "declared_clear_width": 7,
+          "corridor_columns": 505,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 374,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 60,
+          "minimum_structural_cross_section": 7,
+          "minimum_clear_cross_section": 7,
+          "minimum_reachable_cross_section": 7,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0.5,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "ring-northeast-local:start",
+              "x": 40,
+              "z": -95,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 151.0
+            },
+            {
+              "name": "ring-northeast-local:end",
+              "x": 82,
+              "z": -78,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 210.0
+            }
+          ]
+        },
+        {
+          "id": "station-entrance-stair",
+          "passed": true,
+          "declared_clear_width": 21,
+          "corridor_columns": 161,
+          "missing_corridor_columns": [],
+          "declared_clear_columns": 147,
+          "nonclear_declared_columns": [],
+          "unreachable_declared_columns": [],
+          "cross_sections": 7,
+          "minimum_structural_cross_section": 21,
+          "minimum_clear_cross_section": 21,
+          "minimum_reachable_cross_section": 21,
+          "narrow_cross_sections": [],
+          "centerline_invalid_steps": [],
+          "centerline_maximum_boundary_step": 0.5,
+          "centerline_jumps": [],
+          "endpoints": [
+            {
+              "name": "station-entrance-stair:start",
+              "x": -6,
+              "z": -77,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 91.0
+            },
+            {
+              "name": "station-entrance-stair:end",
+              "x": -6,
+              "z": -83,
+              "surface_samples": 4,
+              "reachable_samples": 4,
+              "passed": true,
+              "shortest_surface_route_blocks": 97.0
+            }
+          ]
+        }
+      ],
+      "passed": true,
+      "final_walkable_mask": "Only columns explicitly covered by the passed actual support/headroom verification",
+      "non_walkable_perimeter_floor_columns_excluded": 454,
+      "non_walkable_perimeter_floor_examples": [
+        [
+          -51,
+          -145
+        ],
+        [
+          -50,
+          -145
+        ],
+        [
+          -49,
+          -145
+        ],
+        [
+          -48,
+          -145
+        ],
+        [
+          -47,
+          -145
+        ],
+        [
+          -46,
+          -145
+        ],
+        [
+          -45,
+          -145
+        ],
+        [
+          -24,
+          -145
+        ],
+        [
+          -23,
+          -145
+        ],
+        [
+          -22,
+          -145
+        ]
+      ]
+    },
+    "lake-native-toe-verification": {
+      "checked_points": 3,
+      "checked_route_edges": 0,
+      "failures": [],
+      "passed": true,
+      "scope": {
+        "project_id": "shacraft-lobby-v2",
+        "world_id": "6679385a-b67f-4e88-b6be-33836ced6f2d",
+        "world_epoch": "b7626ccf-9c75-4b00-9cf3-b8a42231c754"
+      },
+      "note": "Observed surface samples and vertical headroom; full cubes, slabs and explicit straight bottom-stair samples. Stair samples are a surface profile, not a full player-width collision simulation. Cached snapshot is not a live re-read.",
+      "observed_supports": [
+        {
+          "x": -91,
+          "z": 31,
+          "y": 83,
+          "state": "minecraft:white_concrete"
+        },
+        {
+          "x": -91,
+          "z": 32,
+          "y": 83,
+          "state": "minecraft:grass_block[snowy=false]"
+        },
+        {
+          "x": -91,
+          "z": 33,
+          "y": 83,
+          "state": "minecraft:grass_block[snowy=false]"
+        }
+      ],
+      "source": "live targeted RPC scan of native shore immediately outside the edit boundary"
+    }
+  },
+  "archive": "/home/emil/Desktop/Shacraft-Lobby-Archive",
+  "world_backup": "/home/emil/Desktop/minecraft-builder-mcp/.runtime/projects/shacraft-foundations-01-02-20260913"
+}

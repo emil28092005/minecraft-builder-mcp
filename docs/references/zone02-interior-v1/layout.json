@@ -1,0 +1,235 @@
+{
+  "status": "PROPOSAL ONLY. Foundation is surveyed; walls, interiors and upper levels are not built.",
+  "world": "shacraft_lobby_v2",
+  "coordinate_convention": "X/Z boxes include both endpoints. Floor Y is block Y; walk Y is top of that floor.",
+  "foundation_source": ".runtime/foundations-stage02/foundations-final.geometry.json",
+  "surface_capture_finished_at": "2026-09-13T11:16:27.647422004Z",
+  "foundation_columns": 5764,
+  "foundation_bounds": [
+    -74,
+    40,
+    -145,
+    -83
+  ],
+  "foundation_surface_height_counts": {
+    "98": 5500,
+    "99": 252,
+    "102": 12
+  },
+  "floors": [
+    {
+      "name": "1 Vestibule",
+      "floor_block_y": 98,
+      "walk_y": 99,
+      "ceiling_underside_y": 111,
+      "clear_height": 12
+    },
+    {
+      "name": "2 Smash",
+      "floor_block_y": 112,
+      "walk_y": 113,
+      "ceiling_underside_y": 124,
+      "clear_height": 11
+    }
+  ],
+  "intermediate_deck_block_y": [
+    111,
+    112
+  ],
+  "perimeter_wall_thickness": 2,
+  "main_roof_eaves_y": 126,
+  "main_roof_ridge_y": 140,
+  "clocktower_peak_y": 158,
+  "entrance_axis_x": -6,
+  "entrance_opening_x": [
+    -9,
+    -3
+  ],
+  "entrance_threshold_z": [
+    -84,
+    -83
+  ],
+  "lift": {
+    "housing": [
+      -10,
+      -2,
+      -124,
+      -116
+    ],
+    "clear_cabin": [
+      -8,
+      -4,
+      -122,
+      -118
+    ],
+    "door_clear_x": [
+      -8,
+      -4
+    ],
+    "door_z": [
+      -117,
+      -116
+    ],
+    "opens": "south",
+    "same_location_on_both_floors": true
+  },
+  "smash_display": [
+    -42,
+    -24,
+    -124,
+    -110
+  ],
+  "smash_selection_bays": [
+    [
+      -45,
+      -39,
+      -140,
+      -136
+    ],
+    [
+      -35,
+      -29,
+      -140,
+      -136
+    ],
+    [
+      -25,
+      -19,
+      -140,
+      -136
+    ],
+    [
+      -15,
+      -9,
+      -140,
+      -136
+    ],
+    [
+      -5,
+      1,
+      -140,
+      -136
+    ],
+    [
+      5,
+      11,
+      -140,
+      -136
+    ]
+  ],
+  "aligned_columns": [
+    [
+      -69,
+      -68,
+      -127,
+      -126
+    ],
+    [
+      -69,
+      -68,
+      -104,
+      -103
+    ],
+    [
+      -49,
+      -48,
+      -127,
+      -126
+    ],
+    [
+      -49,
+      -48,
+      -104,
+      -103
+    ],
+    [
+      -19,
+      -18,
+      -127,
+      -126
+    ],
+    [
+      -19,
+      -18,
+      -104,
+      -103
+    ],
+    [
+      17,
+      18,
+      -127,
+      -126
+    ],
+    [
+      17,
+      18,
+      -104,
+      -103
+    ],
+    [
+      31,
+      32,
+      -127,
+      -126
+    ],
+    [
+      31,
+      32,
+      -104,
+      -103
+    ]
+  ],
+  "wing_benches": [
+    [
+      -67,
+      -60,
+      -132,
+      -131
+    ],
+    [
+      -67,
+      -60,
+      -108,
+      -107
+    ],
+    [
+      24,
+      31,
+      -132,
+      -131
+    ],
+    [
+      24,
+      31,
+      -108,
+      -107
+    ]
+  ],
+  "reserved_clear_aisles": {
+    "entry": [
+      -9,
+      -3,
+      -115,
+      -85
+    ],
+    "bay_front": [
+      -46,
+      11,
+      -135,
+      -129
+    ]
+  },
+  "checks": {
+    "features_inside_two_block_setback": true,
+    "solid_features_do_not_overlap": true,
+    "entry_route_clear_width": 7,
+    "bay_front_clear_depth": 7
+  },
+  "limitations": [
+    "Saved surface export is not a fresh live scan.",
+    "Containment and overlap checks cover the proposed plan, not constructed voxels.",
+    "Generated perspectives are artistic references; this coordinate specification governs placement.",
+    "Arena sign slots are unassigned, not working destinations.",
+    "Future floors need an explicit roof/height design before construction. Only the lift alignment is reserved."
+  ]
+}

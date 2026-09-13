@@ -1,0 +1,17 @@
+name: ShacraftTerrain
+version: '0.1.0'
+main: io.github.minecraftbuilder.terrainworld.TerrainWorldPlugin
+api-version: '26.2'
+loadbefore: [MinecraftBuilderMCP]
+commands:
+  lobby:
+    description: Visit the configured terrain world, inspect generation or export a surface map
+    permission: minecraftbuilder.lobby
+  station:
+    description: Visit the completed clock station vestibule or SMASH floor
+    permission: minecraftbuilder.station
+permissions:
+  minecraftbuilder.lobby:
+    default: op
+  minecraftbuilder.station:
+    default: true

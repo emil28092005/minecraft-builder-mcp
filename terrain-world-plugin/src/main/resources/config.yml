@@ -1,0 +1,22 @@
+# Explicit opt-in; never creates or adopts a world by default.
+enabled: false
+world: shacraft_lobby
+recipe: terrain.json
+# recipe-v1, or shacraft-natural-v1 with an empty-feature envelope recipe.
+terrain-profile: recipe-v1
+# Optional absolute surface Y for lakes/rivers. Omit for dry terrain.
+# water-level: 48
+# Optional exploration border, independent of the editor's authorized bounds.
+# border-size: 2048
+# Optional fixed player feet position for /lobby, world spawn and deaths in this lobby.
+# Omit this section to keep the recipe's original spawn at x=0, z=0.
+# Set this after building a raised plaza; invisible roofs are not spawn surfaces.
+# spawn:
+#   x: 0.5
+#   y: 96
+#   z: 43.5
+#   yaw: 180
+#   pitch: 0
+# Enable only after the two-floor clock station at the documented coordinates is built.
+# station:
+#   enabled: true
